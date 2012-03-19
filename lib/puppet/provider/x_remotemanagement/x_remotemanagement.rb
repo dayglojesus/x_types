@@ -1,3 +1,6 @@
+# Provider: x_remotedesktop
+# Created: Fri Feb  3 11:22:04 PST 2012, bcw@sfu.ca
+
 begin
   require 'osx/cocoa'
   include OSX
@@ -6,7 +9,8 @@ rescue LoadError
 end
 
 Puppet::Type.type(:x_remotemanagement).provide(:x_remotemanagement) do
-
+  desc "Abstracts the Mac OS X kickstart command, allowing management of the Apple Remote Desktop features."
+  
   commands    :kickstart       => '/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart'
 
   confine     :operatingsystem => :darwin
@@ -37,11 +41,11 @@ Puppet::Type.type(:x_remotemanagement).provide(:x_remotemanagement) do
     @@options.each do |k,v|
       case resource[v]
       when true, :true, :enable, :enabled
-	value = true
+	      value = true
       when false, :false, :disable, :disabled,  nil
-	value = false
+	      value = false
       else
-	value = resource[v]
+	      value = resource[v]
       end
       @config[k] = value
     end
@@ -69,7 +73,7 @@ Puppet::Type.type(:x_remotemanagement).provide(:x_remotemanagement) do
         @removals.each do |account|
           # remove account attrib
           user = account[:name][0].to_ruby
-	  info("Removing ARD privs for user, #{user}")
+	        info("Removing ARD privs for user, #{user}")
           account.delete('naprivs')
           result = account.writeToFile_atomically_("#{@@path_to_user_plists}/#{account[:name][0].to_ruby}.plist", true)
           raise("Could not write user plist to file: writeToFile_atomically_ returned nil") if result.nil?
@@ -79,8 +83,8 @@ Puppet::Type.type(:x_remotemanagement).provide(:x_remotemanagement) do
         @additions.each do |account|
           # add account attrib; has to an array of strings
           user = account[:name][0].to_ruby
-	  privs = [resource[:users][user]]
-	  info("Adding ARD privs, #{privs} for user, #{user} ")
+	        privs = [resource[:users][user]]
+	        info("Adding ARD privs, #{privs} for user, #{user} ")
           account['naprivs'] = privs
           result = account.writeToFile_atomically_("#{@@path_to_user_plists}/#{account[:name][0].to_ruby}.plist", true)
           raise("Could not write user plist to file: writeToFile_atomically_ returned nil") if result.nil?
@@ -125,7 +129,7 @@ Puppet::Type.type(:x_remotemanagement).provide(:x_remotemanagement) do
     # Is at least one of the trigger files present?
     components = ['/Library/Preferences/com.apple.RemoteManagement.launchd', '/private/etc/RemoteManagement.launchd']
     components.each do |component|
-	components.delete(component) if not File.exist?(component)
+	    components.delete(component) if not File.exist?(component)
     end
     return false if components.empty?
     # Is the ARDAgent running?
@@ -151,7 +155,7 @@ Puppet::Type.type(:x_remotemanagement).provide(:x_remotemanagement) do
         else
           value = resource[v]
         end
-	config = @config.to_ruby
+	      config = @config.to_ruby
         return false unless config[k].eql?(value) 
       end
     else
@@ -168,7 +172,7 @@ Puppet::Type.type(:x_remotemanagement).provide(:x_remotemanagement) do
     @users_to_repair = []
     if resource[:users].key?('all')
       unless @config.empty?
-	return false unless @config['ARD_AllLocalUsersPrivs']
+	      return false unless @config['ARD_AllLocalUsersPrivs']
         return false unless resource[:users]['all'].eql?(@config['ARD_AllLocalUsersPrivs'].to_ruby)
         return false unless @config['ARD_AllLocalUsers'].boolValue
         return true

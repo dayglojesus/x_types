@@ -1,8 +1,10 @@
-# Type: dslocal_mcx
-# Created: Wed Feb 15 07:49:15 PST 2012
+# Type: x_mcx
+# Created: Wed Feb 15 07:49:15 PST 2012, bcw@sfu.ca
+
 Puppet::Type.newtype(:x_policy) do
   @doc = "Manage Mac OS X MCX Policy on DirectoryService entities in targeted nodes
-    dslocal_mcx { 'SoftwareUpdate':
+    x_policy { 'SoftwareUpdate':
+      provider      => 'x_mcx',
       dslocal_node  => 'MCX',
       type          => 'computergroup',
       plist         => '/private/etc/policy/mcx/policy.plist',
@@ -17,21 +19,10 @@ Puppet::Type.newtype(:x_policy) do
     MCX settings refer to, the MCX resource will autorequire that user, group, or computer.
   "
 
-  feature :manages_content, "The provider can manage MCXSettings as a string.", :methods => [:content, :content=]
+  # feature :manages_content, "The provider can manage MCXSettings as a string.", :methods => [:content, :content=]
 
-  ensurable do
-    desc "Create or remove the MCX setting."
-
-    newvalue(:present) do
-      provider.create
-    end
-
-    newvalue(:absent) do
-      provider.destroy
-    end
-
-  end
-
+  ensurable
+  
   newparam(:name) do
     isnamevar
   end
@@ -61,37 +52,36 @@ Puppet::Type.newtype(:x_policy) do
 
   # JJM Yes, this is not DRY at all.  Because of the code blocks
   # autorequire must be done this way.  I think.
-  def setup_autorequire(type)
-    # value returns a Symbol
-    name = value(:name)
-    ds_type = value(:type)
-    ds_name = value(:name)
-    if ds_type == type
-      rval = [ ds_name.to_s ]
-    else
-      rval = [ ]
-    end
-    rval
-  end
+  # def setup_autorequire(type)
+  #   # value returns a Symbol
+  #   name = value(:name)
+  #   ds_type = value(:type)
+  #   ds_name = value(:name)
+  #   if ds_type == type
+  #     rval = [ ds_name.to_s ]
+  #   else
+  #     rval = [ ]
+  #   end
+  #   rval
+  # end
   
   # I don't think any of this works...
-  # bcw@sfu.ca 
   # Thu Feb 16 11:35:58 PST 2012
   
-  autorequire(:user) do
-    setup_autorequire(:user)
-  end
-  
-  autorequire(:group) do
-    setup_autorequire(:group)
-  end
-  
-  autorequire(:computer) do
-    setup_autorequire(:computer)
-  end
-
-  autorequire(:computergroup) do
-    setup_autorequire(:computergroup)
-  end
+  # autorequire(:user) do
+  #   setup_autorequire(:user)
+  # end
+  # 
+  # autorequire(:group) do
+  #   setup_autorequire(:group)
+  # end
+  # 
+  # autorequire(:computer) do
+  #   setup_autorequire(:computer)
+  # end
+  # 
+  # autorequire(:computergroup) do
+  #   setup_autorequire(:computergroup)
+  # end
 
 end

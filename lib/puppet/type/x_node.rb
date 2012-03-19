@@ -1,16 +1,17 @@
-# Type: node
+# Type: x_node
 # Created: Sat Mar  3 12:26:01 PST 2012, bcw@sfu.ca
+
 Puppet::Type.newtype(:x_node) do
   @doc = "Manage Mac OS X Directory Service nodes
   
   1. Using the 'dslocal' Provider:
-    dslocal_node { 'newnode':
+    x_node { 'newnode':
       active  => 'true',
       ensure  => 'present'
     }
   
   2. Using the 'activedirectory' Provider:
-    dsnode { 'some.domain':
+    x_node { 'some.domain':
       active        => 'true',
       ensure        => 'present'
       provider      => 'activedirectory',
@@ -30,31 +31,7 @@ Puppet::Type.newtype(:x_node) do
       passinterval  => '0',     
     }"
 
-  ensurable do
-    newvalue(:present) do
-      provider.create
-    end
-    newvalue(:absent) do
-      provider.destroy
-    end
-    defaultto :present
-  end
-  
-  # newparam(:provider) do
-  #   newvalues(:dslocal, :activedirectory)
-  #   defaultto :dslocal
-  # end
-  
-  # Not implemented
-  # * Is there any point?
-  # newparam(:options) do
-  #   desc "An XML Property List containing the options to pass to the provider."
-  #   validate do |value|
-  #     unless value =~ /^\/[a-z0-9]+/
-  #       raise ArgumentError, "%s is not a valid file path" % value
-  #     end
-  #   end
-  # end
+  ensurable
       
   newparam(:active) do
     desc "Add/Remove node from the search path: true or false."
@@ -68,7 +45,8 @@ Puppet::Type.newtype(:x_node) do
   end
   
   # Not implemented
-  # * I can't implement this until I can get SASL binding working
+  # * I can't implement this until we use SASL binding. Perhaps after dropping support for 10.5.8?
+  # * We need Ruby 1.8.7 and a working gems installation.
   # newparam(:force) do 
   #   desc "This behaves in the OPPOSITE manner as the dsconfigad util. 
   #   This provider will not bind unless there is an existing computer 

@@ -1,23 +1,15 @@
-# Type: firewall
+# Type: x_firewall
 # Created: Mon Nov 21 15:21:30 PST 2011, bcw@sfu.ca
 Puppet::Type.newtype(:x_firewall) do
   @doc = "Manage Mac OS X firewall.
-    firewall { 'ipfw_setup':
+    x_firewall { 'ipfw_setup':
       rules => ['12300 allow tcp from any to any established'],
       file => '/private/etc/ipfw/ipfw.rules',
       verbosity => '2',
       ensure => present
     }"
 
-  ensurable do
-    newvalue(:present) do
-      provider.create
-    end
-    newvalue(:absent) do
-      provider.destroy
-    end
-    defaultto :present
-  end
+  ensurable
 
   newparam(:type) do
     desc "The type of firewall to enable."

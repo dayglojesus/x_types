@@ -1,9 +1,8 @@
-# Type: remotedesktop
+# Type: x_remotedesktop
 # Created: Fri Feb  3 11:22:04 PST 2012, bcw@sfu.ca
-
 Puppet::Type.newtype(:x_remotemanagement) do
   @doc = "Manage Mac OS X Apple Remote Desktop client settings.
-    remotemanagement { 'setup_ard':
+    x_remotemanagement { 'setup_ard':
       vnc         => 'enable',
       vncpass     => 'foobar',
       menuextra   => 'disabled',
@@ -58,6 +57,7 @@ Puppet::Type.newtype(:x_remotemanagement) do
       end
       event
     end
+    
   end
       
   newparam(:name) do

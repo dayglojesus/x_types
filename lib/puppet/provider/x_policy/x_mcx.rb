@@ -1,3 +1,9 @@
+# Provider: x_mcx
+# Created: Wed Feb 15 07:49:15 PST 2012, bcw@sfu.ca
+
+# TODO
+# - add feature 'autocratic mode', -mcxdelete prior to policy import
+
 require 'tempfile'
 
 Puppet::Type.type(:x_mcx).provide(:x_mcx) do
@@ -89,9 +95,9 @@ Puppet::Type.type(:x_mcx).provide(:x_mcx) do
     if resource[:plist]
       policy = resource[:plist]
     else
-        tmp << resource[:content]
-        tmp.flush
-        policy = tmp.path
+      tmp << resource[:content]
+      tmp.flush
+      policy = tmp.path
     end  
     begin
       dscl "/Local/#{resource[:dslocal_node]}", '-mcximport', "/#{@@type_map[resource[:type]]}/#{resource[:name]}", policy

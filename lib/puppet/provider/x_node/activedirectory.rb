@@ -1,3 +1,6 @@
+# Provider: activedirectory
+# Created: Sat Mar  3 12:26:01 PST 2012, bcw@sfu.ca
+
 begin
   require 'rubygems'
   # require 'osx/cocoa'
@@ -9,13 +12,10 @@ rescue
   puts 'These are not the droids you are looking for...'
 end
 
-# Provider: activedirectory
-# Created: Sat Mar  3 12:26:01 PST 2012, bcw@sfu.ca
 Puppet::Type.type(:x_node).provide(:activedirectory) do
   
   desc 'Abstracts the dsconfiad utility and enables bind/unbind operations.'
   
-  # command :dsconfigad       => '/usr/sbin/dsconfigad'
   confine :operatingsystem  => :darwin
   
   @@legacy_node_name    = '/Active Directory/All Domains'

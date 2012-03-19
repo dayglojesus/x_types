@@ -1,9 +1,11 @@
 # Provider: ipfw
 # Created: Mon Nov 21 15:08:36 PST 2011, bcw@sfu.ca
+
 # TODO
 # - optimize so that configs are not re-applied atomically, not wholesale
 # - implement rules read from "rules" array
 # - allow merge of rules from file and array
+
 Puppet::Type.type(:x_firewall).provide(:ipfw) do
   desc "Provides ipfw support for the firewall type."
 

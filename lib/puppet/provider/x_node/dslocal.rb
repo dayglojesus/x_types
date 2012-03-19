@@ -1,3 +1,6 @@
+# Provider: dslocal
+# Created: Wed Feb 15 07:49:15 PST 2012, bcw@sfu.ca
+
 begin
   require 'fileutils'
   require 'osx/cocoa'
@@ -6,9 +9,6 @@ rescue LoadError
   puts "Move along, nothing to see here."
 end
 
-# Provider: dslocal_node
-# TODO
-# - do full scan of all files in the node to ensure ownership and perms are correct
 Puppet::Type.type(:x_node).provide(:dslocal) do
   desc 'Provides interface for managing Mac OS X Local Directory Service nodes.'
 
@@ -42,9 +42,9 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
     @searchpath.delete(@our_node)
     if resource[:active].eql?(:true)
       if index = @searchpath.index(BSD_NODE)
-	@searchpath.insert(index + 1, @our_node)
+	      @searchpath.insert(index + 1, @our_node)
       else
-	@searchpath.insert(1, @our_node)
+	      @searchpath.insert(1, @our_node)
       end
     end
     restart_directoryservices(5)

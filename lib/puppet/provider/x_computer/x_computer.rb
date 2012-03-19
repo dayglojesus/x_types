@@ -1,3 +1,6 @@
+# Provider: x_computer
+# Created: Mon Dec  5 12:19:52 PST 2011
+
 begin
   require 'pp'
   require 'osx/cocoa'
@@ -6,9 +9,8 @@ rescue LoadError
   puts "What are you doing, Dave? This is highly irregular."
 end
 
-# Provider: dslocal_computer
 Puppet::Type.type(:x_computer).provide(:x_computer) do
-  desc "Provides dscl interface for managing Mac OS X computer groups."
+  desc "Provides dscl interface for managing Mac OS X computers."
 
   commands  :dsclcmd          => "/usr/bin/dscl"
   commands  :uuidgen          => "/usr/bin/uuidgen"

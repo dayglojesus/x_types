@@ -1,3 +1,5 @@
+# Provider: x_user
+# Created: Mon Dec  5 12:19:52 PST 2011, bcw@sfu.ca
 begin
   require 'osx/cocoa'
   include OSX
@@ -5,15 +7,14 @@ rescue LoadError
   puts "This is not the operating system of my people! Let my people go!"
 end
 
-# Provider: dslocal_user
 Puppet::Type.type(:x_user).provide(:x_user) do
-  desc "Provides dscl interface for managing Mac OS X DSLocal users."
+  desc "Provides dscl interface for managing Mac OS X local users in arbitrary local nodes."
 
   commands  :dsclcmd          => "/usr/bin/dscl"
   commands  :uuidgen          => "/usr/bin/uuidgen"
   confine   :operatingsystem  => :darwin
 
-  Req_Attrib_Map_User = { 'dsAttrTypeStandard:RecordName' => :name,
+  @@required_attributes_map = { 'dsAttrTypeStandard:RecordName' => :name,
     'dsAttrTypeStandard:RealName'         => :name,
     'dsAttrTypeStandard:UniqueID'         => :uid,
     'dsAttrTypeStandard:PrimaryGroupID'   => :gid,
@@ -30,8 +31,8 @@ Puppet::Type.type(:x_user).provide(:x_user) do
        FileUtils.rm_rf(@file)
     end
     dsclcmd "/Local/#{resource[:dslocal_node]}", "-create", "/Users/#{resource[:name]}"
-    Req_Attrib_Map_User.each do |key,value|
-      dsclcmd "/Local/#{resource[:dslocal_node]}", "-create", "/Users/#{resource[:name]}", "#{key}", "#{resource[Req_Attrib_Map_User[key]]}"
+    @@required_attributes_map.each do |key,value|
+      dsclcmd "/Local/#{resource[:dslocal_node]}", "-create", "/Users/#{resource[:name]}", "#{key}", "#{resource[@@required_attributes_map[key]]}"
     end
     # HUP the DS
     restart_directory_services
@@ -68,7 +69,7 @@ Puppet::Type.type(:x_user).provide(:x_user) do
     info("Checking user account: #{resource[:name]}")
     if not @user.nil?
       # Roll through each user attribute to ensure it conforms
-      Req_Attrib_Map_User.each do |key,value|
+      @@required_attributes_map.each do |key,value|
         return false unless @user[value].to_ruby.to_s.eql?(resource[value])
       end
       # Finally, check the password

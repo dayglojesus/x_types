@@ -1,7 +1,14 @@
 # Provider: x_computergroup
 # Created: Mon Nov 28 10:38:36 PST 2011, bcw@sfu.ca
+
 # TODO
 # - better error checking on dscl cmds, especially computernames
+# - need to be able to new computergroups inside one another
+
+# KNOWN BUGS
+# - GID is not being managed
+
+
 Puppet::Type.type(:x_computergroup).provide(:x_computergroup) do
   desc "Provides dscl interface for managing Mac OS X computer groups."
 
