@@ -4,6 +4,8 @@ X_types
 A module that extends Puppet functionality on Mac OS X using custom types and 
 providers.
 
+### Version: 0.0.1
+
 ### Requirements:
 
 * Minumum OS: Mac OS X 10.5.8
