@@ -3,12 +3,12 @@
 
 begin
   require 'rubygems'
-  # require 'osx/cocoa'
+  require 'osx/cocoa'
   require 'resolv'
   require 'pp'
   require 'ping'
-  # include OSX
-rescue
+  include OSX
+rescue LoadError
   puts 'These are not the droids you are looking for...'
 end
 
