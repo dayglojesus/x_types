@@ -5,7 +5,7 @@ Puppet::Type.newtype(:x_computer) do
     x_computer { 'my_computer':
       dslocal_node  => 'MyNode',
       en_address    => 'ff:ff:ff:ff:ff:ff',
-      hardware_uuid => "$::sp_platform_uuid",
+      hardware_uuid => \"$::sp_platform_uuid\",
       ensure        => 'present'
     }"
 

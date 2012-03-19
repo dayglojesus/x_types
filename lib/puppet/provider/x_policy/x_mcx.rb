@@ -6,7 +6,7 @@
 
 require 'tempfile'
 
-Puppet::Type.type(:x_mcx).provide(:x_mcx) do
+Puppet::Type.type(:x_policy).provide(:x_mcx) do
 
   desc "MCX Settings management using DirectoryService on OS X.
 
