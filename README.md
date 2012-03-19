@@ -135,7 +135,7 @@ Enable ipfw and apply a set of rules
   # Rules read from a text file in the following form
   # rule\_no action proto from range to range
   # Example: 12308 allow ip from 192.168.0.0/16 to any
-  firewall { 'ipfw\_setup':
+  x\_firewall { 'ipfw\_setup':
     type      => ipfw,
     verbosity => '2',
     file      => '/private/etc/ipfw/ipfw_rules',
