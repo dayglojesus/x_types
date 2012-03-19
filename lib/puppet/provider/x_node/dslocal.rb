@@ -15,13 +15,13 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
   commands  :dsclcmd          => '/usr/bin/dscl'
   confine   :operatingsystem  => :darwin
 
-  DSLOCAL_NODE  = '/Local/Default'
-  BSD_NODE      = '/BSD/local'
-  DSLOCAL_ROOT  = '/private/var/db/dslocal/nodes'
-  CHILD_DIRS    = ['aliases', 'computer_lists', 'computergroups', 'computers', 'config', 'groups', 'networks', 'users']
-  DIRMODE       = 16832
-  FILEMODE      = 33152
-  SP_CUSTOM     = 'dsAttrTypeStandard:CSPSearchPath'
+  @@dslocal_node  = '/Local/Default'
+  @@bsd_node      = '/BSD/local'
+  @@dslocal_root  = '/private/var/db/dslocal/nodes'
+  @@child_dirs    = ['aliases', 'computer_lists', 'computergroups', 'computers', 'config', 'groups', 'networks', 'users']
+  @@dirmode       = 16832
+  @@filemode      = 33152
+  @@sp_custom     = 'dsAttrTypeStandard:CSPSearchPath'
   
   def create
     info("Creating local node: #{resource[:name]}")
@@ -29,7 +29,7 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
     begin
       FileUtils.mkdir_p("#{@parent}") unless File.exist?("#{@parent}")
       FileUtils.chmod(0700, "#{@parent}")
-      CHILD_DIRS.each do |child|
+      @@child_dirs.each do |child|
         FileUtils.mkdir_p("#{@parent}/#{child}") unless File.exist?("#{@parent}/#{child}")
         FileUtils.chmod(0700, "#{@parent}/#{child}")
       end
@@ -41,7 +41,7 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
     # Activate the node by appending the search path if requested
     @searchpath.delete(@our_node)
     if resource[:active].eql?(:true)
-      if index = @searchpath.index(BSD_NODE)
+      if index = @searchpath.index(@@bsd_node)
 	      @searchpath.insert(index + 1, @our_node)
       else
 	      @searchpath.insert(1, @our_node)
@@ -49,7 +49,7 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
     end
     restart_directoryservices(5)
     return unless set_cspsearchpath(@searchpath)
-    return unless set_searchpolicy(SP_CUSTOM)
+    return unless set_searchpolicy(@@sp_custom)
   end
 
   def destroy
@@ -62,7 +62,7 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
   def exists?
     info("Checking local node: #{resource[:name]}")
     @our_node = "/Local/#{resource[:name]}"
-    @parent   = "#{DSLOCAL_ROOT}/#{resource[:name]}"
+    @parent   = "#{@@dslocal_root}/#{resource[:name]}"
     return false unless @searchpath = get_cspsearchpath
     if resource[:active].eql?(:true)
       return false unless @searchpath.member?(@our_node)
@@ -71,10 +71,10 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
     end
     return false unless File.exists?(@parent)
     stat = File::Stat.new(@parent)
-    return false unless stat.mode.eql?(DIRMODE)
-    CHILD_DIRS.each do |child|
+    return false unless stat.mode.eql?(@@dirmode)
+    @@child_dirs.each do |child|
        return false unless File.exists?("#{@parent}/#{child}")
-       return false unless File::Stat.new("#{@parent}/#{child}").mode.eql?(DIRMODE)
+       return false unless File::Stat.new("#{@parent}/#{child}").mode.eql?(@@dirmode)
     end
     return cspsearchpath_active?
   end
@@ -82,7 +82,7 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
   # Are we actively using the CSPSearchPath?
   def cspsearchpath_active?
     result = `dscl /Search -read / SearchPolicy 2> /dev/null`.chomp.split(": ")[1]
-    result.eql?(SP_CUSTOM)
+    result.eql?(@@sp_custom)
   end
   
   # Sets SearchPolicy to Local or Custom
