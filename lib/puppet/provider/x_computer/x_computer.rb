@@ -16,7 +16,7 @@ Puppet::Type.type(:x_computer).provide(:x_computer) do
   commands  :uuidgen          => "/usr/bin/uuidgen"
   confine   :operatingsystem  => :darwin
 
-  Req_Attrib_Map_Computer = { 'dsAttrTypeStandard:RecordName' => :name,
+  @@req_attrib_map_computer = { 'dsAttrTypeStandard:RecordName' => :name,
     'dsAttrTypeStandard:RealName'     => :name,
     'dsAttrTypeStandard:ENetAddress'  => :en_address,
     'dsAttrTypeStandard:HardwareUUID' => :hardware_uuid
@@ -29,12 +29,12 @@ Puppet::Type.type(:x_computer).provide(:x_computer) do
       guid = @computer['dsAttrTypeStandard:GeneratedUID'].to_s
       raise if guid.nil? or guid.empty?
       @needs_repair.each do |attrib|
-        dsclcmd "/Local/#{resource[:dslocal_node]}", "-merge", "/Computers/#{resource[:name]}", "#{attrib}", "#{resource[Req_Attrib_Map_Computer[attrib]]}"
+        dsclcmd "/Local/#{resource[:dslocal_node]}", "-merge", "/Computers/#{resource[:name]}", "#{attrib}", "#{resource[@@req_attrib_map_computer[attrib]]}"
       end
     else
       dsclcmd "/Local/#{resource[:dslocal_node]}", "-create", "/Computers/#{resource[:name]}"
-      Req_Attrib_Map_Computer.each do |key,value|
-        dsclcmd "/Local/#{resource[:dslocal_node]}", "-merge", "/Computers/#{resource[:name]}", "#{key}", "#{resource[Req_Attrib_Map_Computer[key]]}"
+      @@req_attrib_map_computer.each do |key,value|
+        dsclcmd "/Local/#{resource[:dslocal_node]}", "-merge", "/Computers/#{resource[:name]}", "#{key}", "#{resource[@@req_attrib_map_computer[key]]}"
       end
     end
   end
@@ -48,11 +48,11 @@ Puppet::Type.type(:x_computer).provide(:x_computer) do
     info("Checking computer record: #{resource[:name]}")
     # Leopard does nto allow HardwareUUID computer record attribute 
     @kernel_version_major = Facter.kernelmajversion.to_i
-    Req_Attrib_Map_Computer.delete('dsAttrTypeStandard:HardwareUUID') if @kernel_version_major == 9
+    @@req_attrib_map_computer.delete('dsAttrTypeStandard:HardwareUUID') if @kernel_version_major == 9
     @needs_repair = []
     @computer = get_computer(resource[:name])
     if @computer
-      Req_Attrib_Map_Computer.each do |key,value|
+      @@req_attrib_map_computer.each do |key,value|
         @needs_repair << key unless @computer[key].to_s.eql?(resource[value])
       end
       return false unless @needs_repair.empty?
