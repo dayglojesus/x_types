@@ -1,5 +1,5 @@
 # Type: x_node
-# Created: Sat Mar  3 12:26:01 PST 2012, bcw@sfu.ca
+# Created: Sat Mar  3 12:26:01 PST 2012
 
 Puppet::Type.newtype(:x_node) do
   @doc = "Manage Mac OS X Directory Service nodes

@@ -1,5 +1,5 @@
 # Provider: x_mcx
-# Created: Wed Feb 15 07:49:15 PST 2012, bcw@sfu.ca
+# Created: Wed Feb 15 07:49:15 PST 2012
 
 # TODO
 # - add feature 'autocratic mode', -mcxdelete prior to policy import

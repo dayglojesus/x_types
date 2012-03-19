@@ -1,5 +1,6 @@
 # Type: x_computer
 # Created: Mon Dec  5 12:19:52 PST 2011
+
 Puppet::Type.newtype(:x_computer) do
   @doc = "Manage Mac OS X Computer records in arbitrary local nodes
     x_computer { 'my_computer':

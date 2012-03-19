@@ -1,5 +1,5 @@
 # Provider: ipfw
-# Created: Mon Nov 21 15:08:36 PST 2011, bcw@sfu.ca
+# Created: Mon Nov 21 15:08:36 PST 2011
 
 # TODO
 # - optimize so that configs are not re-applied atomically, not wholesale

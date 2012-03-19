@@ -1,5 +1,5 @@
 # Provider: dslocal
-# Created: Wed Feb 15 07:49:15 PST 2012, bcw@sfu.ca
+# Created: Wed Feb 15 07:49:15 PST 2012
 
 begin
   require 'fileutils'

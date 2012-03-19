@@ -1,5 +1,5 @@
 # Type: x_mcx
-# Created: Wed Feb 15 07:49:15 PST 2012, bcw@sfu.ca
+# Created: Wed Feb 15 07:49:15 PST 2012
 
 Puppet::Type.newtype(:x_policy) do
   @doc = "Manage Mac OS X MCX Policy on DirectoryService entities in targeted nodes

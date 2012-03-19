@@ -1,5 +1,6 @@
 # Type: x_computergroup
-# Created: Mon Nov 28 09:52:24 PST 2011, bcw@sfu.ca
+# Created: Mon Nov 28 09:52:24 PST 2011
+
 Puppet::Type.newtype(:x_computergroup) do
   @doc = "Manage Mac OS X ComputerGroup objects
     x_computergroup { 'mynewgroup':

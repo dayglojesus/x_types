@@ -1,5 +1,6 @@
 # Provider: x_user
-# Created: Mon Dec  5 12:19:52 PST 2011, bcw@sfu.ca
+# Created: Mon Dec  5 12:19:52 PST 2011
+
 begin
   require 'osx/cocoa'
   include OSX

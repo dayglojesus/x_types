@@ -1,5 +1,5 @@
 # Provider: activedirectory
-# Created: Sat Mar  3 12:26:01 PST 2012, bcw@sfu.ca
+# Created: Sat Mar  3 12:26:01 PST 2012
 
 begin
   require 'rubygems'

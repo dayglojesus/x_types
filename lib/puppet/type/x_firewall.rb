@@ -1,5 +1,6 @@
 # Type: x_firewall
-# Created: Mon Nov 21 15:21:30 PST 2011, bcw@sfu.ca
+# Created: Mon Nov 21 15:21:30 PST 2011
+
 Puppet::Type.newtype(:x_firewall) do
   @doc = "Manage Mac OS X firewall.
     x_firewall { 'ipfw_setup':

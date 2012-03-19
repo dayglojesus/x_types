@@ -1,5 +1,5 @@
 # Provider: x_computergroup
-# Created: Mon Nov 28 10:38:36 PST 2011, bcw@sfu.ca
+# Created: Mon Nov 28 10:38:36 PST 2011
 
 # TODO
 # - better error checking on dscl cmds, especially computernames

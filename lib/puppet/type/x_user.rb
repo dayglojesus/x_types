@@ -1,5 +1,6 @@
 # Type: x_user
-# Created: Mon Dec  5 12:19:52 PST 2011, bcw@sfu.ca
+# Created: Mon Dec  5 12:19:52 PST 2011
+
 Puppet::Type.newtype(:x_user) do
   @doc = "Manage Mac OS X DS Local user accounts
     x_user { 'newuser':

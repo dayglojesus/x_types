@@ -1,5 +1,6 @@
 # Type: x_remotedesktop
-# Created: Fri Feb  3 11:22:04 PST 2012, bcw@sfu.ca
+# Created: Fri Feb  3 11:22:04 PST 2012
+
 Puppet::Type.newtype(:x_remotemanagement) do
   @doc = "Manage Mac OS X Apple Remote Desktop client settings.
     x_remotemanagement { 'setup_ard':

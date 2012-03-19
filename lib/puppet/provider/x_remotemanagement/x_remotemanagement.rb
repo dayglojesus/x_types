@@ -1,5 +1,5 @@
 # Provider: x_remotedesktop
-# Created: Fri Feb  3 11:22:04 PST 2012, bcw@sfu.ca
+# Created: Fri Feb  3 11:22:04 PST 2012
 
 begin
   require 'osx/cocoa'
