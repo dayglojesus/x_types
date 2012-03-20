@@ -1,8 +1,7 @@
 X_types
 -------
 
-A module that extends Puppet functionality on Mac OS X using custom types and 
-providers.
+A collection of custom Puppet types and providers for Mac OS X.
 
 ### Version: 0.0.1
 
@@ -28,24 +27,25 @@ providers.
       } #10.7
     } #case
 </code>
+* Not tested with 10.8 Mountain Lion
 
 ### Notes:
 
-At first glance, this module may appear to duplicate previous Puppet
-functionality (it does), but it is worth noting that X_types has the ability 
-to create and manage resources in arbitrary dslocal nodes. It also adds some
-new functionality specific to Mac OS X.
+At first glance, this module may appear to duplicate previous Puppet functionality (it does), 
+but it is worth noting that X_types has the ability to create and manage resources in 
+arbitrary dslocal nodes -- a concept specific to Mac OS X management. It also adds support for 
+managing some new functionality specific to Mac OS X.
 
 ### Examples:
 
 #### Core Funtionality:
 
-Include the x\_types module
+* Include the x\_types module
 <code>
   include x\_types
 </code>
 
-Create a new dslocal node
+* Create a new dslocal node
 <code>
   x\_node { 'MCX':
     active => 'true',
@@ -54,7 +54,7 @@ Create a new dslocal node
   }
 </code>
 
-Create a new computer in the designated node
+* Create a new computer in the designated node
 <code>
   x\_computer { "$::hostname":
     dslocal_node  => 'MCX',
@@ -65,7 +65,7 @@ Create a new computer in the designated node
   }
 </code>
 
-Create a new computer group and add the new computer record to it
+* Create a new computer group and add the new computer record to it
 <code>
   x\_computergroup { 'SomePolicyGroup':
     dslocal_node  => 'MCX',
@@ -76,7 +76,7 @@ Create a new computer group and add the new computer record to it
   }
 </code>
 
-Import MCX policy on the target computer group
+* Import MCX policy on the target computer group
 <code>
   x\_policy { 'SomePolicyGroup':
     dslocal_node  => 'MCX',
@@ -89,7 +89,7 @@ Import MCX policy on the target computer group
 
 #### Special Providers:
 
-Enable Apple Remote Desktop
+* Enable Apple Remote Desktop
 <code>
   x\_remotemanagement { 'ard\_setup':
     users     => { 'ardop' => '-1073741569' },
@@ -100,9 +100,9 @@ Enable Apple Remote Desktop
   }
 </code>
 
-Bind to an Active Directory
+* Bind to an Active Directory
 <code>
-  # Unless we have an authoritative hostname, abort bind operation
+  \# Unless we have an authoritative hostname, abort bind operation
   if "$::fqdn" == "$::certname" {
     x\_node { 'some.domain':
       active        => 'true',
@@ -130,11 +130,11 @@ Bind to an Active Directory
   }
 </code>
 
-Enable ipfw and apply a set of rules
+* Enable ipfw and apply a set of rules
 <code>
-  # Rules read from a text file in the following form
-  # rule\_no action proto from range to range
-  # Example: 12308 allow ip from 192.168.0.0/16 to any
+  \# Rules read from a text file in the following form
+  \# rule\_num action proto from range to range
+  \# Example: 12308 allow ip from 192.168.0.0/16 to any
   x\_firewall { 'ipfw\_setup':
     type      => ipfw,
     verbosity => '2',
