@@ -69,9 +69,13 @@ Puppet::Type.type(:x_user).provide(:x_user) do
     # Check the user data, if it's not there, jump to create
     info("Checking user account: #{resource[:name]}")
     if not @user.nil?
-      # Roll through each user attribute to ensure it conforms
-      @@required_attributes_map.each do |key,value|
-        return false unless @user[value].to_ruby.to_s.eql?(resource[value])
+      begin
+        # Roll through each user attribute to ensure it conforms
+        @@required_attributes_map.each do |key,value|
+          return false unless @user[value].to_ruby.to_s.eql?(resource[value])
+        end
+      rescue
+        return false
       end
       # Finally, check the password
       return password_match?
