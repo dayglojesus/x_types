@@ -10,7 +10,7 @@ A collection of custom Puppet types and providers for Mac OS X.
 * Minumum OS: Mac OS X 10.5.8
 * RubyCocoa 1.0.2 or greater if using Mac OS X Lion 
  * Mac OS X Lion's RubyCocoa contains a bug that will segfault under certain conditions (http://tinyurl.com/7l3c34w)
-* You can do something like this to get it installed... 
+* You can do something savage like this to get it installed... 
 <code>
     case $::macosx\_productversion\_major {
       "10.7": {
@@ -27,7 +27,8 @@ A collection of custom Puppet types and providers for Mac OS X.
       } #10.7
     } #case
 </code>
-* Not tested with 10.8 Mountain Lion
+* Or you can be civilized and install it at the same you install Puppet and Facter
+* x_types is not yet tested with 10.8 Mountain Lion
 
 ### Notes:
 
