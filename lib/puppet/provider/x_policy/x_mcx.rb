@@ -1,6 +1,16 @@
 # Provider: x_mcx
 # Created: Wed Feb 15 07:49:15 PST 2012
 
+# TODO
+# - beef up MCX equality test so that it doean't re-apply everything if:
+# => a) autocratic mode is 'false' AND b) policy has been changed locally
+# => Right now, x_mcx will *always* re-apply policy if soemthing has been
+# => changed locally. This is a result of the cheap and cheerful way we
+# => compare state. To get around this, the comparsion needs to be able
+# => to diff the two based on individual XML keys. I am not sure how to 
+# => best accomplish this.
+# => bcw
+
 require 'tempfile'
 
 Puppet::Type.type(:x_policy).provide(:x_mcx) do
