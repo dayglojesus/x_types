@@ -52,20 +52,28 @@ Puppet::Type.newtype(:x_policy) do
           
           Policy defined in the Puppet resource ALWAYS takes precedence over any previously
           defined policy.
-          
+
+          Autocratic mode is the default. You must override this to get the provider to 
+          merge policy.
+                    
           EXAMPLE:
           Your :plist sets policy A, but some local administrator has also manually set 
           policy B on the same target record. 
           
-          Provided the two policies do not collide, when Puppet is run, only the policy 
-          in the :plist (policy A) will be applied, leaving policy B intact. 
+          If :autocratic mode is 'false' and the two policies do not collide, when Puppet 
+          is run, only the policy in the :plist (policy A) will be applied, leaving policy 
+          B intact. 
           
           However, if :autocratic is 'true', all policy in the record will be expunged 
           prior to application, thereby removing policy B and making the policy in :plist 
           (policy A) explicit.
+          
+          NOTE: At present, if Puppet is managing policy on a target record where
+          local changes have been made manually, this provider will reapply policy every
+          time Puppet is run. This is expected behavior, but it may look like a bug.
           "
     newvalues(true, false, :enable, :enabled, :disable, :disabled)
-    defaultto false
+    defaultto true
   end
   
 end
