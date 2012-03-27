@@ -8,8 +8,8 @@ A collection of custom Puppet types and providers for Mac OS X.
 ### Requirements:
 
 * Minumum OS: Mac OS X 10.5.8
-* RubyCocoa 1.0.2 or greater if using Mac OS X Lion 
- * Mac OS X Lion's RubyCocoa contains a bug that will segfault under certain conditions (http://tinyurl.com/7l3c34w)
+* __RubyCocoa 1.0.2 or greater if deploying on Mac OS X Lion__
+ * Mac OS X Lion's RubyCocoa contains a [bug](http://tinyurl.com/7l3c34w) that will segfault under certain conditions
 * You can do something savage like this to get it installed... 
 <code>
     case $::macosx\_productversion\_major {
@@ -28,14 +28,18 @@ A collection of custom Puppet types and providers for Mac OS X.
     } #case
 </code>
 * Or you can be civilized and install it at the same you install Puppet and Facter
-* x_types is not yet tested with 10.8 Mountain Lion
+* X_types has not been tested with [Mac OS X 10.8 Mountain Lion](http://www.apple.com/macosx/mountain-lion/)
+ * There will defnitely be problems!
 
 ### Notes:
 
 At first glance, this module may appear to duplicate previous Puppet functionality (it does), 
 but it is worth noting that X_types has the ability to create and manage resources in 
-arbitrary dslocal nodes -- a concept specific to Mac OS X management. It also adds support for 
-managing some new functionality specific to Mac OS X.
+arbitrary dslocal nodes -- a concept specific to Mac OS X management. It also adds support 
+for managing some functionality specific to Mac OS X.
+
+X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) in the Puppet 
+[mcx type](http://docs.puppetlabs.com/references/2.7.0/type.html#mcx) by adding modality to this type and other similar types.
 
 ### Examples:
 
@@ -93,7 +97,7 @@ managing some new functionality specific to Mac OS X.
 * Enable Apple Remote Desktop
 <code>
   x\_remotemanagement { 'ard\_setup':
-    users     => { 'ardop' => '-1073741569' },
+    users     => { 'myadmin' => '-1073741569' },
     dirgroups => 'ardadmin, ardinteract, ardmanage, ardreports',
     dirlogins => 'enable',
     menuextra => 'disable',
@@ -143,3 +147,9 @@ managing some new functionality specific to Mac OS X.
     require   => File['/private/etc/ipfw'],
   }
 </code>
+
+### Known Issues:
+
+* x\_group provider is missing (unimplemented)
+* x\_mcx provider will continually re-apply policy under certain conditions (see comments in x_mcx.rb and x_policy.rb)
+* x\_profile provider for x_policy type still unimplemented
