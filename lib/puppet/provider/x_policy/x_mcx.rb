@@ -1,9 +1,6 @@
 # Provider: x_mcx
 # Created: Wed Feb 15 07:49:15 PST 2012
 
-# TODO
-# - add feature 'autocratic mode', -mcxdelete prior to policy import
-
 require 'tempfile'
 
 Puppet::Type.type(:x_policy).provide(:x_mcx) do
@@ -33,6 +30,10 @@ Puppet::Type.type(:x_policy).provide(:x_mcx) do
   def create
     max_tries = 4
     count = 0
+    if resource[:autocratic]
+      info("Autocratic mode: expunging previous policy")
+      self.destroy
+    end
     info("Creating policy for #{resource[:name]}...")
     mcximport
     system("mcxquery -user root")
@@ -53,7 +54,7 @@ Puppet::Type.type(:x_policy).provide(:x_mcx) do
     begin
       dscl "/Local/#{resource[:dslocal_node]}", '-mcxdelete', "/#{@@type_map[resource[:type]]}/#{resource[:name]}"
     rescue Puppet::ExecutionFailure => detail
-      fail("Could not export the MCX policy for #{resource[:name]}: #{detail}")
+      fail("Could not destroy the MCX policy for #{resource[:name]}: #{detail}")
     end
   end
 
