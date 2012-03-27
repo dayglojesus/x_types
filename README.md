@@ -151,5 +151,5 @@ X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) 
 ### Known Issues:
 
 * x\_group provider is missing (unimplemented)
-* x\_mcx provider will continually re-apply policy under certain conditions (see comments in x_mcx.rb and x_policy.rb)
+* x\_mcx provider will continually re-apply policy under certain conditions (see comments in x\_mcx.rb and x\_policy.rb)
 * x\_profile provider for x_policy type still unimplemented
