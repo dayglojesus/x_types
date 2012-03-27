@@ -14,13 +14,7 @@ Puppet::Type.newtype(:x_policy) do
     The default provider of this type merely manages the XML plist as
     reported by the dscl -mcxexport command.  This is similar to the
     content property of the file type in Puppet.
-
-    **Autorequires:** If Puppet is managing the user, group, or computer that these
-    MCX settings refer to, the MCX resource will autorequire that user, group, or computer.
   "
-
-  # feature :manages_content, "The provider can manage MCXSettings as a string.", :methods => [:content, :content=]
-
   ensurable
   
   newparam(:name) do
@@ -46,42 +40,32 @@ Puppet::Type.newtype(:x_policy) do
     end
   end
 
-  newproperty(:content, :required_features => :manages_content) do
+  newproperty(:content) do
     desc "An XML string representation (inc'l newlines) of the MCX Property List"
   end
-
-  # JJM Yes, this is not DRY at all.  Because of the code blocks
-  # autorequire must be done this way.  I think.
-  # def setup_autorequire(type)
-  #   # value returns a Symbol
-  #   name = value(:name)
-  #   ds_type = value(:type)
-  #   ds_name = value(:name)
-  #   if ds_type == type
-  #     rval = [ ds_name.to_s ]
-  #   else
-  #     rval = [ ]
-  #   end
-  #   rval
-  # end
   
-  # I don't think any of this works...
-  # Thu Feb 16 11:35:58 PST 2012
+  newparam(:autocratic) do
+    desc "Setting this to true will explicitly define policy on the target record. This
+          means that any policy not defined in the :content or :plist attributes will be 
+          removed prior to application of defined policy. This essentially controls how 
+          policy is masked.
+          
+          Policy defined in the Puppet resource ALWAYS takes precedence over any previously
+          defined policy.
+          
+          EXAMPLE:
+          Your :plist sets policy A, but some local administrator has also manually set 
+          policy B on the same target record. 
+          
+          Provided the two policies do not collide, when Puppet is run, only the policy 
+          in the :plist (policy A) will be applied, leaving policy B intact. 
+          
+          However, if :autocratic is 'true', all policy in the record will be expunged 
+          prior to application, thereby removing policy B and making the policy in :plist 
+          (policy A) explicit.
+          "
+    newvalues(true, false, :enable, :enabled, :disable, :disabled)
+    defaultto false
+  end
   
-  # autorequire(:user) do
-  #   setup_autorequire(:user)
-  # end
-  # 
-  # autorequire(:group) do
-  #   setup_autorequire(:group)
-  # end
-  # 
-  # autorequire(:computer) do
-  #   setup_autorequire(:computer)
-  # end
-  # 
-  # autorequire(:computergroup) do
-  #   setup_autorequire(:computergroup)
-  # end
-
 end
