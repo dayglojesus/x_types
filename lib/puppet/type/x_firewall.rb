@@ -10,7 +10,37 @@ Puppet::Type.newtype(:x_firewall) do
       ensure => present
     }"
 
-  ensurable
+  # Handle whether the service should actually be running right now.
+  newproperty(:ensure) do
+    desc "Whether the service should be running."
+
+    newvalue(:stopped, :event => :service_stopped) do
+      provider.stop
+    end
+
+    newvalue(:running, :event => :service_started) do
+      provider.start
+    end
+
+    aliasvalue(:false, :stopped)
+    aliasvalue(:true, :running)
+
+    def retrieve
+      provider.running?
+    end
+
+    def sync
+      event = super()
+      if property = @resource.property(:enable)
+        val = property.retrieve
+        property.sync unless property.safe_insync?(val)
+      end
+      event
+    end
+    
+    defaultto :running
+    
+  end
 
   newparam(:type) do
     desc "The type of firewall to enable."
