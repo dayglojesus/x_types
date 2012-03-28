@@ -55,11 +55,19 @@ Puppet::Type.newtype(:x_firewall) do
   end
 
   newparam(:rules) do
-    desc "An array containing a list of firewall rules to be enabled."
+    desc "An array containing a list of firewall rules to be enabled.
+          When the provider encounters two rulesets, it merges them. Duplicate rules
+          are discarded, and the rules specified in the :rules attribute are given
+          precedence.
+          "
   end
 
   newparam(:file) do
-    desc "A file containing a list of firewall rules to be enabled."
+    desc "A file containing a list of firewall rules to be enabled.
+          When the provider encounters two rulesets, it merges them. Duplicate rules
+          are discarded, and the rules specified in the :rules attribute are given
+          precedence.
+          "
     validate do |value|
         unless value =~ /^\/[a-z0-9]+/
             raise ArgumentError, "%s is not a valid file path" % value
@@ -71,6 +79,24 @@ Puppet::Type.newtype(:x_firewall) do
     desc "Configures logging verbosity."
   end
 
+  # Not implemented
+  # This idea is silly. Need to be able to combine rules sensibly. Until, have the
+  # the provider do simple a merge.
+  # newparam(:autocratic) do
+  #   desc "By default, you can define two sets of rules: one directly in the resource
+  #         using the :rules attribute, and one in an external location using :file.
+  #         
+  #         When the provider encounters two rulesets, it merges them. Duplicate rules
+  #         are discarded, and the rules specified in the :rules attribute are given
+  #         precedence.
+  #         
+  #         Enabling this attribute effectively tells the provider to use the first set 
+  #         of rules it finds and ignore any other rulesets.
+  #         "
+  #   newvalues(true, false, :enable, :enabled, :disable, :disabled)
+  #   defaultto false
+  # end
+  
   # Ensure we always have rules
   # validate do
   #   unless @parameters.include?(:file) or @parameters.include?(:rules)
