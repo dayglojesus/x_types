@@ -150,6 +150,7 @@ X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) 
 
 #### Custom Facts:
 
+* rubycocoa\_version: returns authoritative RubyCocoa version
 * mac\_console\_users: adds 3 new custom facts
  * mac\_console\_users\_names: names of users who have console sessions
  * mac\_console\_users\_current: name of the user with current session
