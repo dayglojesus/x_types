@@ -45,10 +45,14 @@ X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) 
 
 #### Core Funtionality:
 
-* Include the x\_types module
+* Declare the x\_types class
 <code>
-  include x\_types
+  class { 'x_types': safe => 'false' }
 </code>
+ - It is not required that you declare the x\_types class, but it is recommended.
+ - The class takes a single parameter: $safe. This is a hook to prevent x\_types from loading on incompatible machines.
+ - The default value of $afe is 'true'. To disable this check, send the parameter 'false'.
+<p/>
 
 * Create a new dslocal node
 <code>
