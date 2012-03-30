@@ -6,7 +6,7 @@ A collection of custom Puppet types and providers for Mac OS X.
 
 == Requirements:
 
-* Minumum OS: Mac OS X 10.5.8
+* Minimum OS: Mac OS X 10.5.8
 * <b>RubyCocoa 1.0.2 or greater if deploying on Mac OS X Lion</b>
   * Mac OS X Lion's RubyCocoa contains a bug[http://tinyurl.com/7l3c34w] that will segfault under certain conditions
 * You can do something savage like this to get it installed... 
@@ -28,7 +28,7 @@ A collection of custom Puppet types and providers for Mac OS X.
 
 * Or you can be civilized and install it at the same you install Puppet and Facter
 * X_types has not been tested with {Mac OS X 10.8 Mountain Lion}[http://www.apple.com/macosx/mountain-lion/]
-  * There will defnitely be problems...
+  * There will definitely be problems...
 
 == Notes:
 
@@ -42,7 +42,7 @@ X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) 
 
 == Examples:
 
-=== Core Funtionality:
+=== Core Functionality:
 
 ==== Declare the x_types class
 
@@ -115,6 +115,7 @@ X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) 
 ==== Bind to an Active Directory
 
 * Unless we have an authoritative hostname, abort bind operation
+
 	if "$::fqdn" == "$::certname" {
 	  x_node { 'some.domain':
 	    active        => 'true',
@@ -147,8 +148,7 @@ X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) 
 * rule_num action proto from range to range
 * Example: 12308 allow ip from 192.168.0.0/16 to any
 
-	x_firewall { 'ipfw_setup':
-	  type      => ipfw,
+	x_firewall { 'ipfw':
 	  verbosity => '2',
 	  file      => '/private/etc/ipfw/ipfw_rules',
 	  require   => File['/private/etc/ipfw'],
