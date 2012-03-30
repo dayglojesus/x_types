@@ -3,7 +3,7 @@
 
 Puppet::Type.newtype(:x_firewall) do
   @doc = "Manage Mac OS X firewall.
-    x_firewall { 'ipfw_setup':
+    x_firewall { 'ipfw':
       rules => ['12300 allow tcp from any to any established'],
       file => '/private/etc/ipfw/ipfw.rules',
       verbosity => '2',
