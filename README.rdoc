@@ -11,20 +11,22 @@ A collection of custom Puppet types and providers for Mac OS X.
   * Mac OS X Lion's RubyCocoa contains a bug[http://tinyurl.com/7l3c34w] that will segfault under certain conditions
 * You can do something savage like this to get it installed... 
 
-	case $::macosx_productversion_major {
-	  "10.7": {
-	    package { "RubyCocoa-1.0.2-OSX10.7.dmg":
-	      provider => 'pkgdmg',
-	      ensure => 'present',
-	      source  => 'http://iweb.dl.sourceforge.net/project/rubycocoa/RubyCocoa/1.0.2/RubyCocoa-1.0.2-OSX10.7.dmg',
-	      alias => 'rubycocoa',
-	    }
-	    exec { '/sbin/reboot':
-	      subscribe => Package['rubycocoa'],
-	      refreshonly => true,
-	    } 
-	  } 
-	}
+<code>
+  case $::macosx_productversion_major {
+    "10.7": {
+      package { "RubyCocoa-1.0.2-OSX10.7.dmg":
+        provider => 'pkgdmg',
+        ensure => 'present',
+        source  => 'http://iweb.dl.sourceforge.net/project/rubycocoa/RubyCocoa/1.0.2/RubyCocoa-1.0.2-OSX10.7.dmg',
+        alias => 'rubycocoa',
+      }
+      exec { '/sbin/reboot':
+        subscribe => Package['rubycocoa'],
+        refreshonly => true,
+      } 
+    } 
+  }
+</code> 
 
 * Or you can be civilized and install it at the same you install Puppet and Facter
 * X_types has not been tested with {Mac OS X 10.8 Mountain Lion}[http://www.apple.com/macosx/mountain-lion/]
@@ -37,8 +39,8 @@ but it is worth noting that X_types has the ability to create and manage resourc
 arbitrary dslocal nodes -- a concept specific to Mac OS X management. It also adds support 
 for managing some functionality specific to Mac OS X.
 
-X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) in the Puppet 
-[mcx type](http://docs.puppetlabs.com/references/2.7.0/type.html#mcx) by adding modality to this type and other similar types.
+X_types also addresses {bug #6017}[https://projects.puppetlabs.com/issues/6017] in the Puppet 
+{mcx type}[http://docs.puppetlabs.com/references/2.7.0/type.html#mcx] by adding modality to this type and other similar types.
 
 == Examples:
 
@@ -46,7 +48,9 @@ X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) 
 
 ==== Declare the x_types class
 
-	class { 'x_types': safe => 'false' }
+<code>
+  class { 'x_types': safe => 'false' }
+</code>
 
 * It is not required that you declare the x_types class, but it is recommended.
 * The class takes a single parameter: $safe. This is a hook to prevent x_types from loading on incompatible machines.
@@ -54,34 +58,37 @@ X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) 
 
 ==== Create a new dslocal node
 
-	x_node { 'MCX':
-	  active => 'true',
-	  provider => 'dslocal',
-	  ensure => 'present'
-	}
-
+<code>
+  x_node { 'MCX':
+    active => 'true',
+    provider => 'dslocal',
+    ensure => 'present'
+  }
+</code>
 
 ==== Create a new computer in the designated node
 
-	x_computer { "$::hostname":
-	  dslocal_node  => 'MCX',
-	  en_address    => "$::macaddress_en0",
-	  hardware_uuid => "$::sp_platform_uuid",
-	  ensure        => 'present',
-	  require       => X_node['MCX']
-	}
-
+<code>
+  x_computer { "$::hostname":
+    dslocal_node  => 'MCX',
+    en_address    => "$::macaddress_en0",
+    hardware_uuid => "$::sp_platform_uuid",
+    ensure        => 'present',
+    require       => X_node['MCX']
+  }
+</code>
 
 ==== Create a new computer group and add the new computer record to it
 
-	x_computergroup { 'SomePolicyGroup':
-	  dslocal_node  => 'MCX',
-	  members       =>["$::hostname"],
-	  gid           => '5000',
-	  ensure        => 'present',
-	  require       => X_computer["$::hostname"]
-	}
-
+<code>
+  x_computergroup { 'SomePolicyGroup':
+    dslocal_node  => 'MCX',
+    members       =>["$::hostname"],
+    gid           => '5000',
+    ensure        => 'present',
+    require       => X_computer["$::hostname"]
+  }
+</code>
 
 ==== Import MCX policy on the target computer group
 
@@ -89,58 +96,62 @@ X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) 
 * Setting this to 'false', performs a merge where the policy that Puppet applies always takes precedence.
 * autocratic => 'true' is the default
 
-	x_policy { 'SomePolicyGroup':
-	  dslocal_node  => 'MCX',
-	  provider      => 'x_mcx',
-	  type          => 'computergroup',
-	  plist         => '/private/etc/policy/mcx/applesoftwareupdates.plist',
-	  autocratic    => 'false',
-	  ensure        => 'present',
-	}
-
+<code>
+    x_policy { 'SomePolicyGroup':
+    dslocal_node  => 'MCX',
+    provider      => 'x_mcx',
+    type          => 'computergroup',
+    plist         => '/private/etc/policy/mcx/applesoftwareupdates.plist',
+    autocratic    => 'false',
+    ensure        => 'present',
+  }
+</code>
 
 === Special Providers:
 
 ==== Enable Apple Remote Desktop
 
-	x_remotemanagement { 'ard_setup':
-	  users     => { 'myadmin' => '-1073741569' },
-	  dirgroups => 'ardadmin, ardinteract, ardmanage, ardreports',
-	  dirlogins => 'enable',
-	  menuextra => 'disable',
-	  ensure    => 'running',
-	}
-
+<code>
+  x_remotemanagement { 'ard_setup':
+    users     => { 'myadmin' => '-1073741569' },
+    dirgroups => 'ardadmin, ardinteract, ardmanage, ardreports',
+    dirlogins => 'enable',
+    menuextra => 'disable',
+    ensure    => 'running',
+  }
+</code>
 
 ==== Bind to an Active Directory
 
 * Unless we have an authoritative hostname, abort bind operation
 
-	if "$::fqdn" == "$::certname" {
-	  x_node { 'some.domain':
-	    active        => 'true',
-	    ensure        => 'present'
-	    provider      => 'activedirectory',
-	    active        => 'true',
-	    computerid    => 'some_machine',
-	    username      => 'some_user',
-	    password      => 'a_password',
-	    ou            => 'CN=Computers',
-	    domain        => 'some.domain',
-	    mobile        => 'disable',
-	    mobileconfirm => 'disable',
-	    localhome     => 'disable',
-	    useuncpath    => 'enable',
-	    protocol      => 'afp',
-	    shell         => '/bin/false',
-	    groups        => 'SOME_DOMAIN\some_group,SOME_DOMAIN\another_group',
-	    passinterval  => '0',     
-	  }
-	} else {
-	  $msg = "Our FQDN ($::fqdn) does not match our certname ($::certname). Aborting Puppet run..."
-	  notice($msg)
-	  notify { $msg: }
-	}
+<code>
+  if "$::fqdn" == "$::certname" {
+    x_node { 'some.domain':
+      active        => 'true',
+      ensure        => 'present'
+      provider      => 'activedirectory',
+      active        => 'true',
+      computerid    => 'some_machine',
+      username      => 'some_user',
+      password      => 'a_password',
+      ou            => 'CN=Computers',
+      domain        => 'some.domain',
+      mobile        => 'disable',
+      mobileconfirm => 'disable',
+      localhome     => 'disable',
+      useuncpath    => 'enable',
+      protocol      => 'afp',
+      shell         => '/bin/false',
+      groups        => 'SOME_DOMAIN\some_group,SOME_DOMAIN\another_group',
+      passinterval  => '0',
+    }
+  } else {
+    $msg = "Our FQDN ($::fqdn) does not match our certname ($::certname). Aborting Puppet run..."
+    notice($msg)
+    notify { $msg: }
+  }
+</code>
 
 ==== Enable ipfw and apply a set of rules
 
@@ -148,12 +159,13 @@ X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) 
 * rule_num action proto from range to range
 * Example: 12308 allow ip from 192.168.0.0/16 to any
 
-	x_firewall { 'ipfw':
-	  verbosity => '2',
-	  file      => '/private/etc/ipfw/ipfw_rules',
-	  require   => File['/private/etc/ipfw'],
-	}
-
+<code>
+  x_firewall { 'ipfw':
+    verbosity => '2',
+    file      => '/private/etc/ipfw/ipfw_rules',
+    require   => File['/private/etc/ipfw'],
+  }
+</code>
 
 === Custom Facts:
 
