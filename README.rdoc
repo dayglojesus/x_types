@@ -37,8 +37,8 @@ but it is worth noting that X_types has the ability to create and manage resourc
 arbitrary dslocal nodes -- a concept specific to Mac OS X management. It also adds support 
 for managing some functionality specific to Mac OS X.
 
-X_types also addresses bug [#6017](https://projects.puppetlabs.com/issues/6017) in the Puppet 
-[mcx type](http://docs.puppetlabs.com/references/2.7.0/type.html#mcx) by adding modality to this type and other similar types.
+X_types also addresses {bug #6017}[https://projects.puppetlabs.com/issues/6017] in the Puppet 
+{mcx type}[http://docs.puppetlabs.com/references/2.7.0/type.html#mcx] by adding modality to this type and other similar types.
 
 == Examples:
 
