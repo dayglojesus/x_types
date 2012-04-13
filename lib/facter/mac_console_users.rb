@@ -9,11 +9,19 @@ begin
   sc_dynstore_session       = SCDynamicStoreCreate(nil, sc_dynstore_session_name.call, nil, nil)
   key   = SCDynamicStoreKeyCreateConsoleUser(nil)
   dict  = SCDynamicStoreCopyValue(sc_dynstore_session, key)
-  console[:mac_console_users_names]   = dict['SessionInfo'].to_ruby.collect { |x| x['kCGSSessionUserNameKey'] }.join(',')
-  console[:mac_console_users_current] = dict['Name']
-  console[:mac_console_users_total]   = dict['SessionInfo'].to_ruby.size
+  console[:mac_console_users_current] = ''
+  unless dict['Name'].nil?
+    console[:mac_console_users_current] = dict['Name'] 
+  end
+  console[:mac_console_users_names] = (dict['SessionInfo'].to_ruby.collect do |session| 
+    unless session['kCGSSessionUserIDKey'] == 0
+      session['kCGSSessionUserNameKey']
+    end
+  end).join(',')
+  console[:mac_console_users_total] = console[:mac_console_users_names].split.size
   console.each do |name, fact|
     Facter.add(name) do
+      confine :operatingsystem => :darwin
       setcode do
         fact
       end
