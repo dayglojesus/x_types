@@ -36,7 +36,9 @@ Puppet::Type.type(:x_user).provide(:x_user) do
       dsclcmd "/Local/#{resource[:dslocal_node]}", "-create", "/Users/#{resource[:name]}", "#{key}", "#{resource[@@required_attributes_map[key]]}"
     end
     # HUP the DS
-    restart_directory_services
+    # This was leading to random failures under Lion because launchd will only respawns opendirectory once every 9 secs.
+    # It's overkill, so I will remove this until I am sure that we don't need it for these kinds of ops.
+    # restart_directory_services
     # Flush the pending writes to disk
     system("sync")
     # Reload the user
