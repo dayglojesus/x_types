@@ -209,7 +209,7 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
     # Check the DS Search and Contacts paths an Active Directory string
     cspsearchpaths = ['/Search', '/Search/Contacts'] 
     cspsearchpaths.each do |path|  
-      return if get_cspsearchpath(path).empty?
+      return false if get_cspsearchpath(path).empty?
     end
     max_tries = 3
     count = 0
