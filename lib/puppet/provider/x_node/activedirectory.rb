@@ -4,6 +4,7 @@
 begin
   require 'rubygems'
   require 'osx/cocoa'
+  require 'fileutils'
   require 'resolv'
   require 'pp'
   require 'ping'
@@ -60,6 +61,7 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
         if @state
           configure
         else
+          remove
           bind
           configure
         end
@@ -75,9 +77,7 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
   end
   
   def destroy
-    notice("Removing node: #{resource[:domain]}")
     remove
-    # true
   end
   
   def exists?
@@ -153,7 +153,7 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
   # Get AD plugin options
   def options
     result = {}
-    `dsconfigad -show`.split("\n").each do |line|
+    `/usr/sbin/dsconfigad -show`.split("\n").each do |line|
       if line =~ /^Active Directory Domain|^Computer Account|^\s+/
         unless line =~ /None/i
           key, value = line.split("=")
@@ -206,18 +206,18 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
     domain        = @options['Active Directory Domain'].eql?(resource[:domain])
     computerid    = @options['Computer Account'].eql?(resource[:computerid])  
     return false unless domain and computerid
+    # Check the DS Search and Contacts paths an Active Directory string
+    cspsearchpaths = ['/Search', '/Search/Contacts'] 
+    cspsearchpaths.each do |path|  
+      return if get_cspsearchpath(path).empty?
+    end
     max_tries = 3
     count = 0
     while count < max_tries
-      # Perform a a lookup on our host
-      notice("Querying DS...")
-      if @kernel_version_major < 11
-        system("dscl /Search -read /Computers/#{resource[:computerid]} &> /dev/null")
-        return true if $?.success?
-      else
-        system("dscl /Search -read /Computers/#{resource[:computerid]}$ &> /dev/null")
-        return true if $?.success?
-      end
+      # Perform a a lookup on our bind user
+      notice("Querying DS...")      
+      system("/usr/bin/dscl /Search -read \"/Users/#{resource[:username]}\" &> /dev/null")
+      return true if $?.success?
       restart_directoryservices(10)
       count += 1
     end
@@ -253,12 +253,7 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
     end
     true
   end
-  
-  # Not implemented
-  # def remove_legacy_search_and_contacts_path
-  #   
-  # end
-  
+    
   def restart_directoryservices(wait)
     if @kernel_version_major < 11
       system('/usr/bin/killall DirectoryService')
@@ -294,7 +289,7 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
   def configure
     return true if @needs_repair.empty? # FIX THIS??? Probably move this to the create method
     notice("Configuring plugin options...")
-    `dsconfigad -show &> /dev/null`
+    `/usr/sbin/dsconfigad -show &> /dev/null`
     args = options_to_args(@@adv_options)
     system("dsconfigad #{args.join(" ")}")
     return $?.success?
@@ -307,7 +302,7 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
       return unless $?.success?
       restart_directoryservices(10)
     end
-    `dsconfigad -show &> /dev/null`
+    `/usr/sbin/dsconfigad -show &> /dev/null`
     @@basic_options.delete(:ou) if @resource.parameters[:ou].value.to_s.empty?
     args = options_to_args(@@basic_options)
     system("dsconfigad -f #{args.join(" ")}")
@@ -315,15 +310,61 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
     return set_legacy_search_and_contacts_path
   end
   
-  def remove
-    `dsconfigad -show &> /dev/null`
-    system("dsconfigad -f -r \'#{resource[:computerid]}\' -u \'#{resource[:username]}\' -p \'#{resource[:password]}\'")
-    return unless $?.success?
-    system("/usr/bin/dscacheutil -flushcache")
-    return$?.success?
-    # return set_legacy_search_and_contacts_path
+  # Try to get the CSPSearchPath for the designated path
+  # Arg is a path to search
+  # returns a String
+  def get_cspsearchpath(searchpath)
+    path = ''
+    string  = `/usr/bin/dscl #{searchpath} -read / CSPSearchPath`
+    return path unless $?.success?
+    string.split("\n").grep(/Active Directory/).to_s.strip    
   end
-
+  
+  # Try to remove the specified path from the Search or Contacts path
+  # Args are a path to search, and a path to remove
+  # Returns true on succes, false otherwise
+  def remove_cspsearchpath(searchpath, to_remove)
+    result = `/usr/bin/dscl -plist #{searchpath} -delete / CSPSearchPath \"#{to_remove}\" 2> /dev/null`
+    return unless $?.success?
+    if `/usr/bin/dscl #{searchpath} -read / CSPSearchPath` =~ /#{to_remove}/
+      return false
+    end
+    true
+  end
+  
+  # Manually remove the files and paths associated with binding to Active Directory
+  def remove
+    # Remove the search paths
+    notice("Removing node: #{resource[:domain]}")
+    cspsearchpaths = ['/Search', '/Search/Contacts'] 
+    cspsearchpaths.each do |path|  
+      to_remove = get_cspsearchpath(path)
+      unless to_remove.empty?
+        return unless remove_cspsearchpath(path, to_remove)
+      end
+    end
+    # Remove the configuration files
+    begin
+      if @kernel_version_major < 11
+        files = Dir.glob("/Library/Preferences/DirectoryService/ActiveDirectory*")
+        files.each do |file|
+          FileUtils.rm_r(file)
+        end
+      else
+        dirs = ['/Library/Preferences/OpenDirectory/Configurations/Active Directory', 
+          '/Library/Preferences/OpenDirectory/DynamicData/Active Directory']
+        dirs.each do |dir|
+          FileUtils.rm_rf(dir)
+        end
+      end
+    rescue => error
+      notice("Provider encountered while removing Active Directory config: #{error.message}")
+      return false
+    end
+    # Restart directory services
+    restart_directoryservices(11)
+    true
+  end
   
   def wait_for_network(seconds)
     time = 0
