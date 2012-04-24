@@ -218,7 +218,7 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
       notice("Querying DS...")      
       system("/usr/bin/dscl /Search -read \"/Users/#{resource[:username]}\" &> /dev/null")
       return true if $?.success?
-      restart_directoryservices(10)
+      sleep 60
       count += 1
     end
     false
