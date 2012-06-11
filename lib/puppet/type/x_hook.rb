@@ -61,10 +61,8 @@ Puppet::Type.newtype(:x_hook) do
 
       # Sort by value (int), then by key (alpha)
       # http://stackoverflow.com/questions/4790796/sorting-a-hash-in-ruby-by-its-value-first-then-its-key
-      def prioritize_hooks(array_of_dicts)
-        compiled = Hash.new
-        array_of_dicts.each { |e| compiled.merge!(e) } 
-        ordered = compiled.sort_by { |x, y| [ -Integer(y), x ] }
+      def prioritize_hooks(list)
+        ordered = list.sort_by { |x, y| [ -Integer(y), x ] }
         ordered.collect! { |array| array[0] }
         ordered.reverse!
       end
