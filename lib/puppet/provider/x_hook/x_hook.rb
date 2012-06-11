@@ -72,32 +72,37 @@ Puppet::Type.type(:x_hook).provide(:x_hook) do
     true
   end
   
+  # The master hoook is an ERB template; render it
   def master
     remaster = render_template(resource[:master])
     realign(remaster)
   end
   
+  # Master hook already defined in the root loginwindow prefs?
   def master_enabled?
     return false if @master_preferences[@master_label].nil?
     return @master_preferences[@master_label].to_ruby.eql?(@master_path)
   end
   
+  # Enable the master hook by adding the defined key to the root loginwindow prefs
   def load_master
     @master_preferences[@master_label] = @master_path
     @master_preferences
   end
 
+  # Remove the appropriate key from the root loginwindow prefs
   def unload_master
     @master_preferences.delete(@master_label)
     @master_preferences
   end
   
+  # Decide which path to use, an absolute path OR a path relative to our @hooks_dir
   def hook_path
     return resource[:name] if resource[:name] =~ /^\//
     "#{@hooks_dir}/#{resource[:name]}"
   end
   
-  # This will need to be expanded so that it handles resource[:file]
+  # Load the :content as hook OR read content from @hook_path
   def hook
     hook = realign(resource[:content]) || read_content_from_disk(@hook_path)
     unless resource[:ensure].to_s.eql?('absent')
@@ -105,35 +110,42 @@ Puppet::Type.type(:x_hook).provide(:x_hook) do
     end
     hook
   end
-    
+  
+  # Load a Property List
   def load_plist(file)
     NSMutableDictionary.dictionaryWithContentsOfFile(file)
   end
   
+  # Is the hook defined in the appropriate @hooks_array in our x_type prefs?
   def hook_loaded?
     return false if @hooks_array.empty?
     return @hooks_array.include?(@hook_record)
   end
   
+  # Define the hook in the appropriate @hooks_array in our x_type prefs
   def load_hook
     @hooks_array << @hook_record
     @preferences[resource[:type].to_s + 'hooks'] = @hooks_array
   end
   
+  # Remove the hook from the appropriate @hooks_array in our x_type prefs
   def unload_hook
     @hooks_array.delete(@hook_record)
     @preferences[resource[:type].to_s + 'hooks'] = @hooks_array
   end
   
+  # Write an NSDictionary to disk to store our preferences
   def write_preferences(dict, path)
     dict.writeToFile_atomically(path, true)
   end
   
+  # Compare the contents of a variable with that of a file on disk
   def content_matches_file?(content, path)
     file = read_content_from_disk(path)
     content.eql?(file)
   end
   
+  # Create the basic dir structure for storing hooks
   def create_hooks_dir(hooks_dir)
     begin
       FileUtils.mkdir_p(hooks_dir)
@@ -144,6 +156,7 @@ Puppet::Type.type(:x_hook).provide(:x_hook) do
     end
   end
   
+  # Read in a file
   def read_content_from_disk(path)
     content = String.new
     begin
@@ -157,6 +170,7 @@ Puppet::Type.type(:x_hook).provide(:x_hook) do
     content
   end
   
+  # Write out a file
   def write_content_to_disk(source, path)
     begin
       File.open(path, 'w') { |f| f.write(source)}
@@ -166,12 +180,15 @@ Puppet::Type.type(:x_hook).provide(:x_hook) do
     end
   end
   
+  # Render an EB template
   def render_template(template)
     doc = ERB.new(template, 0, "%<>")
     # doc.run(self.send(:binding))
     doc.result(self.send(:binding))
   end
   
+  # Realigns multiline content to margin; very primative
+  # Strips blank lines -- not so great
   def realign(content)
     return nil unless content
     content = content.split("\n")
