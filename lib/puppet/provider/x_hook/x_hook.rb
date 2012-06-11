@@ -39,7 +39,7 @@ Puppet::Type.type(:x_hook).provide(:x_hook) do
     unload_hook
     FileUtils.rm(@hook_path)
     write_preferences(@preferences, @@x_types_prefs)
-    if @hooks_array.empty?
+    if @hooks_list.empty?
       unload_master
       FileUtils.rm(@master_path)
       write_preferences(@master_preferences, @@loginwindow_prefs)
@@ -54,7 +54,7 @@ Puppet::Type.type(:x_hook).provide(:x_hook) do
     # Hook
     @preferences = load_plist(@@x_types_prefs) || NSMutableDictionary.new
     @hooks_dir = '/private/etc/x_types/x_hooks'
-    @hooks_array = @preferences[resource[:type].to_s + 'hooks'] || NSMutableArray.new
+    @hooks_list = @preferences[resource[:type].to_s + 'hooks'] || NSMutableDictionary.new
     @hook_path = hook_path
     @hook_record = { @hook_path => resource[:priority].to_i }.to_ns
     @hook = hook
@@ -116,22 +116,22 @@ Puppet::Type.type(:x_hook).provide(:x_hook) do
     NSMutableDictionary.dictionaryWithContentsOfFile(file)
   end
   
-  # Is the hook defined in the appropriate @hooks_array in our x_type prefs?
+  # Is the hook defined in the appropriate @hooks_list in our x_type prefs?
   def hook_loaded?
-    return false if @hooks_array.empty?
-    return @hooks_array.include?(@hook_record)
+    return false if @hooks_list.empty?
+    return @hooks_list[@hook_path] == @hook_record[@hook_path]
   end
   
-  # Define the hook in the appropriate @hooks_array in our x_type prefs
+  # Define the hook in the appropriate @hooks_list in our x_type prefs
   def load_hook
-    @hooks_array << @hook_record
-    @preferences[resource[:type].to_s + 'hooks'] = @hooks_array
+    @hooks_list.merge!(@hook_record)
+    @preferences[resource[:type].to_s + 'hooks'] = @hooks_list
   end
   
-  # Remove the hook from the appropriate @hooks_array in our x_type prefs
+  # Remove the hook from the appropriate @hooks_list in our x_type prefs
   def unload_hook
-    @hooks_array.delete(@hook_record)
-    @preferences[resource[:type].to_s + 'hooks'] = @hooks_array
+    @hooks_list.delete(@hook_path)
+    @preferences[resource[:type].to_s + 'hooks'] = @hooks_list
   end
   
   # Write an NSDictionary to disk to store our preferences
