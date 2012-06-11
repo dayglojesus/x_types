@@ -66,6 +66,7 @@ Puppet::Type.newtype(:x_hook) do
         array_of_dicts.each { |e| compiled.merge!(e) } 
         ordered = compiled.sort_by { |x, y| [ -Integer(y), x ] }
         ordered.collect! { |array| array[0] }
+        ordered.reverse!
       end
 
       @log.notice("#{@type.capitalize}: #{@username}, uid=#{@user_info.uid}, gid=#{@user_info.gid}")
