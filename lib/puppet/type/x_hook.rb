@@ -26,8 +26,8 @@ Puppet::Type.newtype(:x_hook) do
 
     
   newparam(:priority) do
-    desc "The priority execution of the hook represented as an integer. Zero is the highest 
-    priority."
+    desc "The priority execution of the hook represented as an integer. Negative integers 
+    are accepted."
   end
     
   newparam(:master) do
