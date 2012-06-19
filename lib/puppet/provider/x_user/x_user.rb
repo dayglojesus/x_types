@@ -15,7 +15,9 @@ Puppet::Type.type(:x_user).provide(:x_user) do
   @@password_hash_dir = '/var/db/shadow/hash'
   
   def create
-    unless @user.empty?  
+    freshie = true
+    unless @user.empty?
+      freshie = false
       delete_user
     end
     info("Creating user account: #{resource[:name]}")
@@ -28,6 +30,7 @@ Puppet::Type.type(:x_user).provide(:x_user) do
     # Write the changes to disk; ALL the changes
     result = @user.writeToFile_atomically_(@file, true)
     raise("Could not write user plist to file: writeToFile_atomically_ returned nil") if result.nil?
+    restart_directoryservices(11) if freshie
     result
   end
   
@@ -193,6 +196,15 @@ Puppet::Type.type(:x_user).provide(:x_user) do
     rescue Puppet::ExecutionFailure => detail
       fail("Could not destroy the user account #{resource[:name]}: #{detail}")
     end
+  end
+  
+  def restart_directoryservices(wait)
+    if @kernel_version_major < 11
+      system('/usr/bin/killall DirectoryService')
+    else
+      system('/usr/bin/killall opendirectoryd')
+    end
+    sleep wait
   end
   
 end
