@@ -5,6 +5,7 @@ Puppet::Type.newtype(:x_user) do
   @doc = "Manage Mac OS X DS Local user accounts
     x_user { 'newuser':
       dslocal_node  => 'MyNode',
+      realname      => 'New User'
       uid           => '301',
       shell         => '/bin/bash',
       gid           => '80',
@@ -20,6 +21,11 @@ Puppet::Type.newtype(:x_user) do
   newparam(:name) do
     desc 'The name of the user record to manage.'
     isnamevar
+  end
+
+  newparam(:realname) do
+    desc 'The name of the user record to manage.'
+    defaultto { @resource[:name] }
   end
 
   newparam(:dslocal_node) do
