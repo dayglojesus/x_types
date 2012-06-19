@@ -11,87 +11,65 @@ end
 Puppet::Type.type(:x_user).provide(:x_user) do
   desc "Provides dscl interface for managing Mac OS X local users in arbitrary local nodes."
 
-  commands  :dsclcmd          => "/usr/bin/dscl"
-  commands  :uuidgen          => "/usr/bin/uuidgen"
-  confine   :operatingsystem  => :darwin
-
-  @@required_attributes_map = { 'dsAttrTypeStandard:RecordName' => :name,
-    'dsAttrTypeStandard:RealName'         => :name,
-    'dsAttrTypeStandard:UniqueID'         => :uid,
-    'dsAttrTypeStandard:PrimaryGroupID'   => :gid,
-    'dsAttrTypeStandard:UserShell'        => :shell,
-    'dsAttrTypeStandard:NFSHomeDirectory' => :home,
-    'dsAttrTypeStandard:Comment'          => :comment
-  }
-
+  @@required_attributes = [ :name, :realname, :uid, :gid, :shell, :home, :comment ]
   @@password_hash_dir = '/var/db/shadow/hash'
   
   def create
+    unless @user.empty?  
+      delete_user
+    end
     info("Creating user account: #{resource[:name]}")
-    unless @user.nil?  
-       FileUtils.rm_rf(@file)
+    @@required_attributes.each do |attrib|
+      # info("create: adding #{attrib} attribute, #{resource[attrib]}")
+      @user[attrib.to_s] = [ resource[attrib] ]
     end
-    dsclcmd "/Local/#{resource[:dslocal_node]}", "-create", "/Users/#{resource[:name]}"
-    @@required_attributes_map.each do |key,value|
-      dsclcmd "/Local/#{resource[:dslocal_node]}", "-create", "/Users/#{resource[:name]}", "#{key}", "#{resource[@@required_attributes_map[key]]}"
-    end
-    # HUP the DS
-    # This was leading to random failures under Lion because launchd will only respawns opendirectory once every 9 secs.
-    # It's overkill, so I will remove this until I am sure that we don't need it for these kinds of ops.
-    # restart_directory_services
-    # Flush the pending writes to disk
-    system("sync")
-    # Reload the user
-    @user = get_user(resource[:name])
-    unless @user.nil?
-       set_password(@user)
-    else
-      fail("Could not load the user data file.")
-    end
-  end  
-
-  def destroy
-    begin
-      info("Destroying user account: #{resource[:name]}")
-      if @kernel_version_major < 11
-        guid = @user['generateduid'][0].to_ruby
-        password_hash_file = "#{@@password_hash_dir}/#{guid}"
-        FileUtils.rm_rf(password_hash_file)
-      end
-      dsclcmd "/Local/#{resource[:dslocal_node]}", "-delete", "/Users/#{resource[:name]}"
-    rescue Puppet::ExecutionFailure => detail
-      fail("Could not destroy the user account #{resource[:name]}: #{detail}")
-    end
+    set_password
+    set_authentication_authority unless @user['authentication_authority']
+    # Write the changes to disk; ALL the changes
+    result = @user.writeToFile_atomically_(@file, true)
+    raise("Could not write user plist to file: writeToFile_atomically_ returned nil") if result.nil?
+    result
   end
-
+  
+  def destroy
+    info("Destroying user account: #{resource[:name]}")
+    delete_user
+  end
+  
   def exists?
     @kernel_version_major = Facter.kernelmajversion.to_i
     # Load the user data
-    @user = get_user(resource[:name])
+    @user = get_user(resource[:name]) || NSMutableDictionary.new
     # Check the user data, if it's not there, jump to create
     info("Checking user account: #{resource[:name]}")
-    if not @user.nil?
+    if not @user.empty?
       begin
-        # Roll through each user attribute to ensure it conforms
-        @@required_attributes_map.each do |key,value|
-          return false unless @user[value].to_ruby.to_s.eql?(resource[value])
+        # Roll through each required user attribute to ensure it conforms
+        @@required_attributes.each do |attrib|
+          unless @user[attrib.to_s].to_ruby.to_s.eql?(resource[attrib])
+            # info("Attrib: #{attrib}, does not match")
+            return false
+          end
         end
       rescue
+        info("There was an unspecified error while parsing the user plist.")
         return false
       end
+      return false unless @user['authentication_authority']
       # Finally, check the password
       return password_match?
     else
+      # info("No such account: #{resource[:name]}")
       return false
     end
   end
-
+  
   # Load the user data
   ## Returns an NSDictionary representation of the the user.plist if it exists
   ## If it doesn't, it will return nil
   def get_user(name)
     @file = "/private/var/db/dslocal/nodes//#{resource[:dslocal_node]}/users/#{name}.plist"
-    user = NSMutableDictionary.dictionaryWithContentsOfFile(@file)
+    NSMutableDictionary.dictionaryWithContentsOfFile(@file)
   end
   
   # Returns a bool
@@ -102,18 +80,6 @@ Puppet::Type.type(:x_user).provide(:x_user) do
       get_hash_sha1(@user).eql?(resource[:password_sha1])
     end
   end
-  
-  # Restart Directory Services
-  ## Yes, that's all it does
-  def restart_directory_services
-    if @kernel_version_major >= 11
-      system("killall opendirectoryd")
-    else
-      system("killall DirectoryService")
-    end
-    sleep 2
-  end
-    
   
   # Parses the shadow hash file on disk; returns Ruby String
   ## Stolen and modified from Puppet core
@@ -133,63 +99,28 @@ Puppet::Type.type(:x_user).provide(:x_user) do
   # Expects an NSDictionary; returns Ruby String
   def get_hash_sha512(user)
     shadowhashdata = user['ShadowHashData'][0]
-    # The ShadowHashData key is actually an embedded Binary plist
-    # We Serialize this into a new NSDictionary
-    @embedded_bplist = NSPropertyListSerialization.objc_send(
+    embedded_bplist = NSPropertyListSerialization.objc_send(
       :propertyListFromData, shadowhashdata,
       :mutabilityOption, NSPropertyListMutableContainersAndLeaves,
       :format, nil,
       :errorDescription, nil
     )
-    # Returns NSMutableData object containing Hexadecimal ASCII String 
-    # This is the Salt + the actual SHA512 hash
-    # We make it an array, and strip the angle brackets (how do you do this without gsub? Is there a Objc method?)
-    hash = @embedded_bplist['SALTED-SHA512'].to_s.gsub(/<|>/,"").split
-    # Desalinate: Lop off the first 4 bytes which is just the salt
-    # sugar = hash.shift
+    hash = embedded_bplist['SALTED-SHA512'].to_s.gsub(/<|>/,"").split
     hash.join
   end
   
-  # Set Lion Passwords
-  ## Fix the authentication_authority
-  ## Read hash from attribs, re-format it, serialize it, 
-  ## Now, write the whole user plist to disk 
-  def set_password_sha512(user)
-    aa = fix_authentication_authority(user)
-    user['authentication_authority'] = aa
-    salted_hash_hex = resource[:password_sha512]
+  # Convert a hexdump of a password hash to ShadowHashData object
+  def serialize_shadowhashdata(hash, label)
+    salted_hash_hex = hash
     string = convert_hex_to_ascii(salted_hash_hex)
     data = NSData.alloc.initWithBytes_length_(string, string.length)
-    @embedded_bplist = NSMutableDictionary.new if @embedded_bplist.nil?
-    @embedded_bplist['SALTED-SHA512'] = data
-    user['ShadowHashData'][0] = NSPropertyListSerialization.objc_send(
-      :dataFromPropertyList, @embedded_bplist,
+    embedded_bplist = NSMutableDictionary.new
+    embedded_bplist[label] = data
+    NSPropertyListSerialization.objc_send(
+      :dataFromPropertyList, embedded_bplist,
       :format, NSPropertyListBinaryFormat_v1_0,
       :errorDescription, nil
     )
-    result = user.writeToFile_atomically_(@file, true)
-    raise("Could not write user plist to file: writeToFile_atomically_ returned nil") if result.nil?
-    result
-  end
-  
-  # Set Legacy Passwords
-  ## Fix the authentication_authority
-  ## Read hash from attribs, and write it to disk as a shadow hash
-  ## Now, write the whole user plist to disk 
-  ## Mostly stolen from Puppet core and modified
-  def set_password_sha1(user)
-    aa = fix_authentication_authority(user)
-    user['authentication_authority'] = aa
-    guid = user['generateduid'][0].to_ruby
-    password_hash_file = "#{@@password_hash_dir}/#{guid}"
-    begin
-      File.open(password_hash_file, 'w') { |f| f.write(resource[:password_sha1])}
-    rescue Errno::EACCES => detail
-      raise("Could not write to password hash file: #{detail}")
-    end
-    result = user.writeToFile_atomically_(@file, true)
-    raise("Could not write user plist to file: writeToFile_atomically_ returned nil") if result.nil?
-    result
   end
   
   # Self-explanatory
@@ -197,47 +128,71 @@ Puppet::Type.type(:x_user).provide(:x_user) do
     string.scan(/../).collect { |byte| byte.hex.chr }.join
   end
   
-  # Rebuild the AuthenticationAuthority
-  ## Takes user dictionary as its arg
-  ## Returns a new AuthenticationAuthority array
-  ## Hopefully does nto destroy any other types of hashes
-  def fix_authentication_authority(user)
-    index = 0
-    preamble = ';ShadowHash;HASHLIST:'
-    hashlist = []
-    authority = user['authentication_authority']
-    unless authority.nil?
-      index = authority.to_ruby.index { |e| e =~ /^;ShadowHash;/ }
-      # We match and then use the post-match
-      unless $'.empty? or $'.nil?
-        hashlist = $'.split(":").pop                      # pop the real values off the HASHLIST: grab token and discard the rest
-        hashlist = hashlist.gsub!(/<|>/,"").split(",")    # lose the angle brackets and populate an array with the comma sep. vals.
-        hashlist.delete_if { |e| e =~ /SALTED-SHA/ }      # for economy, just purge the list of any SHA authorities
-      end
-    else
-      authority = NSMutableArray.new
-    end
-    if @kernel_version_major >= 11
-      hashlist << 'SALTED-SHA512'
-    else
-      hashlist << 'SALTED-SHA1'
-    end
-    authority[index] = preamble + "<#{hashlist.join(",")}>"
-    authority
-  end
-    
   # Set the password
-  ## Based on which OS we are operating on
-  def set_password(user)
+  def set_password
     begin
       if @kernel_version_major >= 11
-        set_password_sha512(user)
+        set_password_lion
       else
-        set_password_sha1(user)
+        set_password_legacy
       end
     rescue Puppet::ExecutionFailure => detail
       fail("Could not set the password for #{resource[:name]}: #{detail}")
     end
+  end  
+  
+  # Create a ShadowHashData attribute for the user
+  def set_password_lion
+    @user['ShadowHashData'] = NSMutableArray.new
+    @user['ShadowHashData'][0] = serialize_shadowhashdata(resource[:password_sha512], 'SALTED-SHA512')
   end
-
+  
+  # Create a shadow has file for the user
+  def set_password_legacy
+    if @user['generateduid']
+      guid = @user['generateduid'][0].to_ruby
+    else
+      guid = new_generateduid.to_ruby
+    end
+    @user['generateduid'] = [ guid ]
+    password_hash_file = "#{@@password_hash_dir}/#{guid}"
+    begin
+      File.open(password_hash_file, 'w') { |f| f.write(resource[:password_sha1])}
+    rescue Errno::EACCES => detail
+      raise("Could not write to password hash file: #{detail}")
+    end
+  end
+  
+  # Set the authentication authority
+  def set_authentication_authority
+    value = ';ShadowHash;HASHLIST:'
+    authority = NSMutableArray.new      
+    if @kernel_version_major >= 11
+      value << '<SALTED-SHA512>'
+    else
+      value << '<SALTED-SHA1>'
+    end
+    authority << value
+    @user['authentication_authority'] = authority
+  end
+  
+  # Return a new generateduid
+  def new_generateduid
+    CFUUIDCreateString(nil, CFUUIDCreate(nil))
+  end
+  
+  # Delete the user and applicable shadow hash file
+  def delete_user
+    begin
+      if @kernel_version_major < 11
+        guid = @user['generateduid'][0].to_ruby
+        password_hash_file = "#{@@password_hash_dir}/#{guid}"
+        FileUtils.rm_rf(password_hash_file)
+      end
+      FileUtils.rm_rf(@file)
+    rescue Puppet::ExecutionFailure => detail
+      fail("Could not destroy the user account #{resource[:name]}: #{detail}")
+    end
+  end
+  
 end
