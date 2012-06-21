@@ -11,6 +11,9 @@ end
 Puppet::Type.type(:x_user).provide(:x_user) do
   desc "Provides dscl interface for managing Mac OS X local users in arbitrary local nodes."
 
+  confine     :operatingsystem => :darwin
+  defaultfor  :operatingsystem => :darwin
+
   @@required_attributes = [ :name, :realname, :uid, :gid, :shell, :home, :comment ]
   @@password_hash_dir = '/var/db/shadow/hash'
   
