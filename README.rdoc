@@ -167,27 +167,27 @@ X_types also addresses {bug #6017}[https://projects.puppetlabs.com/issues/6017] 
   }
 </code>
 
-==== Create a loginhook or logouthook
+==== Create a login or logout hooks
 
 * Allows you to define two types: login or logout
 * Allows you to set a precedence for each script per type
-* Scrits that share a precedence will be executed alphabetically
+* Scripts that share a precedence will be executed alphabetically
 * Script content defined inline or as a file on disk
 
 <code>
   x_hook { 'loguser_in':
-  type     => 'login',
-  priority => '0',
-  ensure   => 'present',
-  content  => "
-    #!/bin/bash
-    USER_NAME=\${1}
-    USER_UID=\${2}
-    USER_GID=\${3}
-    /usr/bin/syslog -s -r $syslog_server -l Info \"Login: \${USER_NAME}, uid=\${USER_UID}, gid=\${USER_GID}\"
-    exit 0
+    type     => 'login',
+    priority => '0',
+    ensure   => 'present',
+    content  => "
+      #!/bin/bash
+      USER_NAME=\${1}
+      USER_UID=\${2}
+      USER_GID=\${3}
+      /usr/bin/syslog -s -r $syslog_server -l Info \"Login: \${USER_NAME}, uid=\${USER_UID}, gid=\${USER_GID}\"
+      exit 0
     "
-}
+ }
 </code>
 
 === Custom Facts:
