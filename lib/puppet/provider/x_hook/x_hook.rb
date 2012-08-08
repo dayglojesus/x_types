@@ -7,7 +7,7 @@ begin
   require 'erb'
   require 'pp'
   include OSX
-rescue
+rescue LoadError
   puts "Are you still there?"
 end
 
