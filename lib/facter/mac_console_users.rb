@@ -27,6 +27,6 @@ begin
       end
     end
   end
-rescue => e
+rescue => LoadError
   puts "Preparing to dispense product... [#{e.message}]"
 end
