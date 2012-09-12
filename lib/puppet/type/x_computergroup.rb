@@ -19,6 +19,7 @@ Puppet::Type.newtype(:x_computergroup) do
 
   newparam(:dslocal_node) do
     desc "The name of the node to manage."
+    defaultto 'Default'
   end
 
   newparam(:computers) do
