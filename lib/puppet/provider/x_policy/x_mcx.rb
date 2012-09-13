@@ -11,7 +11,13 @@
 # => best accomplish this.
 # => bcw
 
-require 'tempfile'
+begin
+  require 'tempfile'
+  require 'osx/cocoa'
+  include OSX
+rescue LoadError
+  puts "I feel like I'm taking crazy pills!"
+end
 
 Puppet::Type.type(:x_policy).provide(:x_mcx) do
 
@@ -25,47 +31,38 @@ Puppet::Type.type(:x_policy).provide(:x_mcx) do
   Adapted from Jeff McCune's mcxcontent provider.
   "
 
-  # This provides a mapping of puppet types to DirectoryService type strings.
-  @@type_map = {
-    :user          => "Users",
-    :group         => "Groups",
-    :computer      => "Computers",
-    :computergroup => "ComputerGroups",
-  }
-
-  commands    :dscl => "/usr/bin/dscl"
+  commands    :dscl => '/usr/bin/dscl'
+  commands    :managedclient => '/System/Library/CoreServices/ManagedClient.app/Contents/MacOS/ManagedClient'
   confine     :operatingsystem => :darwin
   defaultfor  :operatingsystem => :darwin
 
+  @@mcx_cache = '/Library/Managed Preferences'
+  # This provides a mapping of puppet types to DirectoryService type strings.
+  @@type_map = {
+    :user          => 'Users',
+    :group         => 'Groups',
+    :computer      => 'Computers',
+    :computergroup => 'ComputerGroups',
+  }
+
   def create
-    max_tries = 4
-    count = 0
     if resource[:autocratic]
       info("Autocratic mode: expunging previous policy")
-      self.destroy
+      mcxdelete
     end
     info("Creating policy for #{resource[:name]}...")
     mcximport
-    system("mcxquery -user root")
-    while count <= max_tries
-      File.exists?('/Library/Managed Preferences')
-      info("Waiting for Managed Preferences...")
+    mcxrefresh
+    5.times do |count|
+      break if policy_cached?
+      info("Waiting for Managed Preferences [#{count}] ...")
       mcxrefresh
-      count += 1
     end
-    unless File.exists?('/Library/Managed Preferences')
-      notice("Policy application may require a reboot to ensure consistency.")
-    end
-    system("mcxquery -user root")
   end
   
   def destroy
     info("Destroying policy for #{resource[:name]}...")
-    begin
-      dscl "/Local/#{resource[:dslocal_node]}", '-mcxdelete', "/#{@@type_map[resource[:type]]}/#{resource[:name]}"
-    rescue Puppet::ExecutionFailure => detail
-      fail("Could not destroy the MCX policy for #{resource[:name]}: #{detail}")
-    end
+    mcxdelete
   end
 
   # We define 'policy' as that which is authoritative whereas 'config' is present state
@@ -78,7 +75,7 @@ Puppet::Type.type(:x_policy).provide(:x_mcx) do
     return false unless @config.eql?(@policy)
     true
   end
-    
+
   # Returns the authoritative policy as specified in the Puppet resource
   def policy
     policy = ""
@@ -88,6 +85,18 @@ Puppet::Type.type(:x_policy).provide(:x_mcx) do
       policy = resource[:content]
     end
     policy
+  end
+  
+  def policy_cached?
+    plist = NSDictionary.dictionaryWithContentsOfFile(resource[:plist])
+    policy_files = plist.keys.collect { |policy| "#{@@mcx_cache}/#{policy}.plist" }
+    policy_files.each do |file|
+      unless File.exists?(file)
+        puts "No such file: \'#{file}\'"
+        return false
+      end
+    end
+    true
   end
   
   # Abstracts dscl -mcxexport
@@ -120,17 +129,16 @@ Puppet::Type.type(:x_policy).provide(:x_mcx) do
   end
   
   def mcxrefresh
-    restart_directoryservices(10)
-    system("mcxquery -user root &> /dev/null")
+    managedclient '-f'
+    sleep 5
   end
   
-  def restart_directoryservices(wait)
-    if @kernel_version_major < 11
-      system('/usr/bin/killall DirectoryService')
-    else
-      system('/usr/bin/killall opendirectoryd')
+  def mcxdelete
+    begin
+      dscl "/Local/#{resource[:dslocal_node]}", '-mcxdelete', "/#{@@type_map[resource[:type]]}/#{resource[:name]}"
+    rescue Puppet::ExecutionFailure => detail
+      fail("Could not destroy the MCX policy for #{resource[:name]}: #{detail}")
     end
-    sleep wait
   end
-  
+    
 end
