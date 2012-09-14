@@ -80,7 +80,9 @@ Puppet::Type.type(:x_user).provide(:x_user) do
   
   # Returns a bool
   def password_match?
-    if @kernel_version_major >= 11
+    if @kernel_version_major == 12
+      get_hash_sha512_pbkdf2(@user).eql?(resource[:password_sha512_pbkdf2])
+    elsif @kernel_version_major == 11
       get_hash_sha512(@user).eql?(resource[:password_sha512])
     else
       get_hash_sha1(@user).eql?(resource[:password_sha1])
@@ -90,40 +92,68 @@ Puppet::Type.type(:x_user).provide(:x_user) do
   # Parses the shadow hash file on disk; returns Ruby String
   ## Stolen and modified from Puppet core
   def get_hash_sha1(user)
-    guid = user['generateduid'][0].to_ruby
-    password_hash = nil
-    password_hash_file = "#{@@password_hash_dir}/#{guid}"
-    if File.exists?(password_hash_file) and File.file?(password_hash_file)
-      fail("Could not read password hash file at #{password_hash_file}") if not File.readable?(password_hash_file)
-      f = File.new(password_hash_file)
-      password_hash = f.read
-      f.close
+    begin
+      guid = user['generateduid'][0].to_ruby
+      password_hash = nil
+      password_hash_file = "#{@@password_hash_dir}/#{guid}"
+      if File.exists?(password_hash_file) and File.file?(password_hash_file)
+        fail("Could not read password hash file at #{password_hash_file}") if not File.readable?(password_hash_file)
+        f = File.new(password_hash_file)
+        password_hash = f.read
+        f.close
+      end
+      password_hash
+    rescue
+      return String,new
     end
-    password_hash
   end
   
   # Expects an NSDictionary; returns Ruby String
   def get_hash_sha512(user)
-    shadowhashdata = user['ShadowHashData'][0]
-    embedded_bplist = NSPropertyListSerialization.objc_send(
-      :propertyListFromData, shadowhashdata,
-      :mutabilityOption, NSPropertyListMutableContainersAndLeaves,
-      :format, nil,
-      :errorDescription, nil
-    )
-    hash = embedded_bplist['SALTED-SHA512'].to_s.gsub(/<|>/,"").split
-    hash.join
+    begin
+      shadowhashdata = user['ShadowHashData'][0]
+      embedded_bplist = NSPropertyListSerialization.objc_send(
+        :propertyListFromData, shadowhashdata,
+        :mutabilityOption, NSPropertyListMutableContainersAndLeaves,
+        :format, nil,
+        :errorDescription, nil
+      )
+      hash = embedded_bplist['SALTED-SHA512'].to_s.gsub(/<|>/,"").split
+      hash.join
+    rescue
+      return String.new
+    end
   end
   
-  # Convert a hexdump of a password hash to ShadowHashData object
-  def serialize_shadowhashdata(hash, label)
-    salted_hash_hex = hash
-    string = convert_hex_to_ascii(salted_hash_hex)
-    data = NSData.alloc.initWithBytes_length_(string, string.length)
-    embedded_bplist = NSMutableDictionary.new
-    embedded_bplist[label] = data
+  # Expects an NSDictionary; returns Ruby Hash
+  def get_hash_sha512_pbkdf2(user)
+    begin
+      shadowhashdata = user['ShadowHashData'][0]
+      embedded_bplist = NSPropertyListSerialization.objc_send(
+        :propertyListFromData, shadowhashdata,
+        :mutabilityOption, NSPropertyListMutableContainersAndLeaves,
+        :format, nil,
+        :errorDescription, nil
+      )
+      plist = embedded_bplist.values[0].to_ruby
+      resource = {}
+      resource['iterations'] = plist['iterations'].to_s
+      resource['salt'] = plist['salt'].description.to_ruby.gsub!(/<|>/,"").split.join
+      resource['entropy'] = plist['entropy'].description.to_ruby.gsub!(/<|>/,"").split.join
+      resource
+    rescue
+      return Hash.new
+    end
+  end
+  
+  # Returns a ShadowHashData structure (NSData)
+  # - label is s string representing type of hash being stored
+  # - data is the NSDictionary object you want stored
+  def create_shadowhashdata(label, data)
+    plist = NSMutableDictionary.new
+    plist[label] = data
     NSPropertyListSerialization.objc_send(
-      :dataFromPropertyList, embedded_bplist,
+      :dataFromPropertyList, plist,
       :format, NSPropertyListBinaryFormat_v1_0,
       :errorDescription, nil
     )
@@ -134,23 +164,44 @@ Puppet::Type.type(:x_user).provide(:x_user) do
     string.scan(/../).collect { |byte| byte.hex.chr }.join
   end
   
+  # Encode a hexidecimal string as NSData
+  def encode_hex_to_nsdata(hex)
+    ascii = convert_hex_to_ascii(hex)
+    data = NSData.alloc.initWithBytes_length_(ascii, ascii.length)    
+  end
+  
   # Set the password
   def set_password
     begin
-      if @kernel_version_major >= 11
-        set_password_lion
+      if @kernel_version_major == 12
+        set_password_mtnlion(resource[:password_sha512_pbkdf2])
+      elsif @kernel_version_major == 11
+        set_password_lion(resource[:password_sha512])
       else
         set_password_legacy
       end
     rescue Puppet::ExecutionFailure => detail
       fail("Could not set the password for #{resource[:name]}: #{detail}")
     end
-  end  
+  end
   
   # Create a ShadowHashData attribute for the user
-  def set_password_lion
+  def set_password_mtnlion(hash)
+    data = NSMutableDictionary.new
+    data['entropy'] = encode_hex_to_nsdata(hash['entropy'])
+    data['salt'] = encode_hex_to_nsdata(hash['salt'])
+    data['iterations'] = hash['iterations'].to_i
     @user['ShadowHashData'] = NSMutableArray.new
-    @user['ShadowHashData'][0] = serialize_shadowhashdata(resource[:password_sha512], 'SALTED-SHA512')
+    @user['ShadowHashData'][0] = create_shadowhashdata('SALTED-SHA512-PBKDF2', data)
+  end
+
+  # Create a ShadowHashData attribute for the user
+  def set_password_lion(hash)
+    salted_hash_hex = hash
+    string = convert_hex_to_ascii(salted_hash_hex)
+    data = NSData.alloc.initWithBytes_length_(string, string.length)
+    @user['ShadowHashData'] = NSMutableArray.new
+    @user['ShadowHashData'][0] = create_shadowhashdata('SALTED-SHA512', data)
   end
   
   # Create a shadow has file for the user
@@ -173,7 +224,9 @@ Puppet::Type.type(:x_user).provide(:x_user) do
   def set_authentication_authority
     value = ';ShadowHash;HASHLIST:'
     authority = NSMutableArray.new      
-    if @kernel_version_major >= 11
+    if @kernel_version_major == 12
+      value << '<SALTED-SHA512-PBKDF2>'
+    elsif @kernel_version_major == 11
       value << '<SALTED-SHA512>'
     else
       value << '<SALTED-SHA1>'
