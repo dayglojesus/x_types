@@ -16,6 +16,11 @@ Puppet::Type.newtype(:x_computer) do
     desc 'The name of the computer record to manage.'
     isnamevar
   end
+  
+  newparam(:realname) do
+    desc 'The name of the user record to manage.'
+    defaultto { @resource[:name] }
+  end
 
   newparam(:dslocal_node) do
     desc 'The name of the node to manage. Default is "Default".'
