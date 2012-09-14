@@ -18,7 +18,7 @@ Puppet::Type.newtype(:x_computer) do
   end
   
   newparam(:realname) do
-    desc 'The name of the user record to manage.'
+    desc 'The full name of the computer record to manage.'
     defaultto { @resource[:name] }
   end
 
