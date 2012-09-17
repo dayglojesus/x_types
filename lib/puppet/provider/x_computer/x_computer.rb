@@ -14,12 +14,12 @@ Puppet::Type.type(:x_computer).provide(:x_computer) do
   confine     :operatingsystem => :darwin
   defaultfor  :operatingsystem => :darwin
 
-  @@required_attributes = [ :name, :realname, :en_address, :hardware_uuid ]
+  @@required_attributes_computer = [ :name, :realname, :en_address, :hardware_uuid ]
 
   def create
     freshie = @computer.empty?
     info("Creating computer record: #{resource[:name]}")
-    @@required_attributes.each do |attrib|
+    @@required_attributes_computer.each do |attrib|
       # info("create: adding #{attrib} attribute, #{resource[attrib]}")
       @computer[attrib.to_s] = [ resource[attrib] ]
     end
@@ -38,13 +38,13 @@ Puppet::Type.type(:x_computer).provide(:x_computer) do
   def exists?
     @kernel_version_major = Facter.kernelmajversion.to_i
     @computer = get_computer(resource[:name]) || NSMutableDictionary.new
-    @@required_attributes.delete(:hardware_uuid) if @kernel_version_major == 9
+    @@required_attributes_computer.delete(:hardware_uuid) if @kernel_version_major == 9
     info("Checking computer record: #{resource[:name]}")
     if not @computer.empty?
       begin
         return false unless @computer['generateduid']
         # Roll through each required user attribute to ensure it conforms
-        @@required_attributes.each do |attrib|
+        @@required_attributes_computer.each do |attrib|
           unless @computer[attrib.to_s].to_ruby.to_s.eql?(resource[attrib])
             # info("Attrib: #{attrib}, does not match")
             return false
