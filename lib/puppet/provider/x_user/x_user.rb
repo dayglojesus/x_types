@@ -9,7 +9,7 @@ rescue LoadError
 end
 
 Puppet::Type.type(:x_user).provide(:x_user) do
-  desc "Provides dscl interface for managing Mac OS X local users in arbitrary local nodes."
+  desc "Provides RubyCocoa interface for managing Mac OS X local users."
 
   confine     :operatingsystem => :darwin
   defaultfor  :operatingsystem => :darwin
