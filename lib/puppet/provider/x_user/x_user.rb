@@ -14,7 +14,7 @@ Puppet::Type.type(:x_user).provide(:x_user) do
   confine     :operatingsystem => :darwin
   defaultfor  :operatingsystem => :darwin
 
-  @@required_attributes = [ :name, :realname, :uid, :gid, :shell, :home, :comment ]
+  @@required_attributes_user = [ :name, :realname, :uid, :gid, :shell, :home, :comment ]
   @@password_hash_dir = '/var/db/shadow/hash'
   
   def create
@@ -24,7 +24,7 @@ Puppet::Type.type(:x_user).provide(:x_user) do
       delete_user
     end
     info("Creating user account: #{resource[:name]}")
-    @@required_attributes.each do |attrib|
+    @@required_attributes_user.each do |attrib|
       # info("create: adding #{attrib} attribute, #{resource[attrib]}")
       @user[attrib.to_s] = [ resource[attrib] ]
     end
@@ -51,7 +51,7 @@ Puppet::Type.type(:x_user).provide(:x_user) do
     if not @user.empty?
       begin
         # Roll through each required user attribute to ensure it conforms
-        @@required_attributes.each do |attrib|
+        @@required_attributes_user.each do |attrib|
           unless @user[attrib.to_s].to_ruby.to_s.eql?(resource[attrib])
             # info("Attrib: #{attrib}, does not match")
             return false
