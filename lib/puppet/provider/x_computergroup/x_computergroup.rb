@@ -2,7 +2,6 @@
 # Created: Mon Nov 28 10:38:36 PST 2011
 
 begin
-  require 'pp'
   require 'osx/cocoa'
   include OSX
 rescue LoadError
@@ -10,110 +9,123 @@ rescue LoadError
 end
 
 Puppet::Type.type(:x_computergroup).provide(:x_computergroup) do
-  desc "Provides dscl interface for managing Mac OS X computer groups."
+  desc "Provides RubyCocoa interface for managing Mac OS X computergroup records with Puppet."
 
-  commands  :dsclcmd          => "/usr/bin/dscl"
-  commands  :uuidgen          => "/usr/bin/uuidgen"
-  confine   :operatingsystem  => :darwin
+  confine     :operatingsystem => :darwin
+  defaultfor  :operatingsystem => :darwin
 
-  @@req_attrib_map_computergroup = { 
-    'name'      => :name,
-    'realname'  => :name,
-    'gid'       => :gid,
-  }
+  @@required_attributes = [ :name, :realname, :gid ]
 
-  def create    
-    # Fix the existing record or create it as required
-    if @computergroup
-      info("Repairing computer group: #{resource[:name]}")
-      guid = @computergroup['generateduid'].to_s
-      raise if guid.nil? or guid.empty?
-      unless @needs_repair.empty? or @needs_repair.nil?
-        @needs_repair.each do |attrib|
-          dsclcmd "/Local/#{resource[:dslocal_node]}", "-create", "/ComputerGroups/#{resource[:name]}", "#{attrib}", "#{resource[@@req_attrib_map_computergroup[attrib]]}"
-        end
-      end
-    else
-      info("Creating computer group: #{resource[:name]}")
-      dsclcmd "/Local/#{resource[:dslocal_node]}", "-create", "/ComputerGroups/#{resource[:name]}"
-      @@req_attrib_map_computergroup.each do |key,value|
-        dsclcmd "/Local/#{resource[:dslocal_node]}", "-create", "/ComputerGroups/#{resource[:name]}", "#{key}", "#{resource[@@req_attrib_map_computergroup[key]]}"
-      end
+  def create
+    freshie = @computergroup.empty?
+    info("Creating computergroup record: #{resource[:name]}")
+    @@required_attributes.each do |attrib|
+      # info("create: adding #{attrib} attribute, #{resource[attrib]}")
+      @computergroup[attrib.to_s] = [ resource[attrib] ]
     end
-    # Populate the group membership
-    unless resource[:computers].empty? or resource[:computers].nil?
-      operation = '-merge'
-      operation = '-create' if resource[:autocratic]
-      @computers_by_guid.each do |key, value|
-        dsclcmd "/Local/#{resource[:dslocal_node]}", "#{operation}", "/ComputerGroups/#{resource[:name]}", "GroupMembers", "#{key}"
-        dsclcmd "/Local/#{resource[:dslocal_node]}", "#{operation}", "/ComputerGroups/#{resource[:name]}", "GroupMembership", "#{value}"
-      end
-    end
+    @computergroup['generateduid'] = [ new_generateduid ] unless @computergroup['generateduid']
+    add_computer_members
+    result = @computergroup.writeToFile_atomically_(@file, true)
+    raise("Could not write computergroup plist to file: writeToFile_atomically_ returned nil") if result.nil?
+    restart_directoryservices(11) if freshie
+    result
   end
 
   def destroy
     info("Destroying computer group: #{resource[:name]}")
-    dsclcmd "/Local/#{resource[:dslocal_node]}", "-delete", "/ComputerGroups/#{resource[:name]}"
+    delete_computergroup
   end
 
   def exists?
+    @kernel_version_major = Facter.kernelmajversion.to_i
+    @computergroup = get_computergroup(resource[:name]) || NSMutableDictionary.new
     info("Checking computer group: #{resource[:name]}")
-    @needs_repair = []
-    unless resource[:computers].empty? or resource[:computers].nil?
-      @computers_by_guid = get_computer_guids_by_name(resource[:computers])
-    end
-    begin
-      @computergroup = get_computergroup(resource[:name]).to_ruby
-      if @computergroup
-        @@req_attrib_map_computergroup.each do |key,value|
-          @needs_repair << key unless @computergroup[key].to_s.eql?(resource[value])
+    if not @computergroup.empty?
+      begin
+        # Roll through each required user attribute to ensure it conforms
+        @@required_attributes.each do |attrib|
+          unless @computergroup[attrib.to_s].to_ruby.to_s.eql?(resource[attrib])
+            # info("Attrib: #{attrib}, does not match")
+            return false
+          end
         end
-        return unless check_computers?(@computers_by_guid)
-      else
+        # Check membership
+        unless resource[:computers].empty? or resource[:computers].nil?
+          return check_computer_membership
+        end
+      rescue => error
+        # puts error.message
+        info("There was an unspecified error while parsing the computergroup plist.")
         return false
       end
-    rescue
+    else
+      # info("No such account: #{resource[:name]}")
       return false
     end
-    return @needs_repair.empty?
   end
-
-  # Check the resource defined membership against the real membership
-  # Returns boolean
-  def check_computers?(map)
-    return false if @computergroup['groupmembers'].nil? or @computergroup['users'].nil?
-    unless map.nil? or map.empty?
-      begin
-        return false unless @computergroup['groupmembers'].sort.eql?(map.keys.sort)
-        return false unless @computergroup['users'].sort.eql?(map.values.sort)
-      rescue
-        return false
-      end
-    end
-    true
-  end
-
-  # Returns a hash mapping GUID to computername
-  def get_computer_guids_by_name(names)
-    members_by_guid = {}
-    names.each do |member|
-      begin
-        member_guid = (`dscl /Local/#{resource[:dslocal_node]} -read /Computers/#{member} GeneratedUID 2> /dev/null`.split(": ")[1]).chomp
-        members_by_guid[member_guid] = member
-      rescue
-        notice("Attempt to retrieve GUID for record #{member} returned: #{$?.exitstatus} -- Record not found. Cannot add member \"#{member}\" to computer group: #{resource[:name]}")
-        warn("Attempt to retrieve GUID for record #{member} returned: #{$?.exitstatus} -- Record not found. Cannot add member \"#{member}\" to computer group: #{resource[:name]}")
-      end
-    end
-    members_by_guid
-  end
-
-  # Load the computergroup data
+  
+  # Load the computergroup object
   ## Returns an NSDictionary representation of the the computergroup.plist if it exists
   ## If it doesn't, it will return nil
   def get_computergroup(name)
-    @file = "/private/var/db/dslocal/nodes//#{resource[:dslocal_node]}/computergroups/#{name}.plist"
-    computergroup = NSMutableDictionary.dictionaryWithContentsOfFile(@file)
+    @file = "/private/var/db/dslocal/nodes/#{resource[:dslocal_node]}/computergroups/#{name}.plist"
+    NSMutableDictionary.dictionaryWithContentsOfFile(@file)
+  end
+  
+  # Delete the user and applicable shadow hash file
+  def delete_computergroup
+    begin
+      FileUtils.rm_rf(@file)
+    rescue Puppet::ExecutionFailure => detail
+      fail("Could not destroy the computergroup record, #{resource[:name]}: #{detail}")
+    end
+  end
+  
+  # Return a new generateduid
+  def new_generateduid
+    CFUUIDCreateString(nil, CFUUIDCreate(nil))
+  end
+  
+  def check_computer_membership
+    current_members  = @computergroup['users'].to_ruby || []
+    assigned_members = resource[:computers].to_a || []
+    if resource[:autocratic].to_s =~ /true|enable/
+      return current_members.sort.eql?(assigned_members.sort)
+    else
+      composite = assigned_members & current_members
+      return composite.sort.eql?(assigned_members.sort)
+    end
+  end
+
+  def add_computer_members
+    map = {}
+    assigned_members = resource[:computers].to_a || []
+    assigned_members.each do |member|
+      path = "/private/var/db/dslocal/nodes/MCX/computers/#{member}.plist"
+      if File.exists?(path)        
+        record = NSMutableDictionary.dictionaryWithContentsOfFile(path)
+        key = record['generateduid'].to_ruby.to_s
+        map[key] = member
+      else
+        fail("Could not add computer member, \'#{member}\': no such record")
+      end
+    end
+    if resource[:autocratic].to_s =~ /true|enable/
+      @computergroup['groupmembers'] = map.keys.to_ns
+      @computergroup['users'] = map.values.to_ns
+    else
+      @computergroup['groupmembers'] = @computergroup['groupmembers'] | map.keys.to_ns
+      @computergroup['users'] = @computergroup['users'] | map.values.to_ns
+    end
+  end
+
+  def restart_directoryservices(wait)
+    if @kernel_version_major < 11
+      system('/usr/bin/killall DirectoryService')
+    else
+      system('/usr/bin/killall opendirectoryd')
+    end
+    sleep wait
   end
 
 end
