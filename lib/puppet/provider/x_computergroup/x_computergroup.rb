@@ -14,12 +14,12 @@ Puppet::Type.type(:x_computergroup).provide(:x_computergroup) do
   confine     :operatingsystem => :darwin
   defaultfor  :operatingsystem => :darwin
 
-  @@required_attributes = [ :name, :realname, :gid ]
+  @@required_attributes_computergroup = [ :name, :realname, :gid ]
 
   def create
     freshie = @computergroup.empty?
     info("Creating computergroup record: #{resource[:name]}")
-    @@required_attributes.each do |attrib|
+    @@required_attributes_computergroup.each do |attrib|
       # info("create: adding #{attrib} attribute, #{resource[attrib]}")
       @computergroup[attrib.to_s] = [ resource[attrib] ]
     end
@@ -43,7 +43,7 @@ Puppet::Type.type(:x_computergroup).provide(:x_computergroup) do
     if not @computergroup.empty?
       begin
         # Roll through each required user attribute to ensure it conforms
-        @@required_attributes.each do |attrib|
+        @@required_attributes_computergroup.each do |attrib|
           unless @computergroup[attrib.to_s].to_ruby.to_s.eql?(resource[attrib])
             # info("Attrib: #{attrib}, does not match")
             return false
