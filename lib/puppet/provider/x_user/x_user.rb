@@ -17,6 +17,55 @@ Puppet::Type.type(:x_user).provide(:x_user) do
   @@required_attributes_user = [ :name, :realname, :uid, :gid, :shell, :home, :comment ]
   @@password_hash_dir = '/var/db/shadow/hash'
   
+  def self.instances
+    args = Puppet::Util::CommandLine.new.args
+    resource_type, resource_name = args.each { |x| x }
+    known_attrs = @@required_attributes_user
+    type = 'users'
+    records = []
+    
+    nodes = Dir.glob("/private/var/db/dslocal/nodes/*")
+    nodes.each do |node|
+      path = "#{node}/#{type}"
+      if resource_name
+        file = "#{path}/#{resource_name}.plist"
+      next unless File.exist?(file)
+        files = [file]
+      else
+        files = Dir.glob("#{path}/*.plist")
+      end
+      files.each do |file|
+        records << NSMutableDictionary.dictionaryWithContentsOfFile(file)
+      end
+    end
+    
+    records.collect! do |record|
+      record = self.new(record)
+      password = record.get_password(record.model)
+      record = record.model.to_ruby
+      record = record.delete_if { |k,v| !(known_attrs.member?(k.to_sym)) }
+      record = record.inject({}) {|memo,(k,v)| memo[k] = v.first.to_s; memo}
+      record['password'] = password
+      Puppet::Resource.new(:x_user, record['name'], :parameters => record)
+    end
+
+    records.each do |record|
+      puts record.to_manifest
+    end
+    exit 0
+  end
+
+  # Set the password
+  def get_password(record)
+    if record['ShadowHashData']
+      password = get_hash_sha512_pbkdf2(record)
+      return get_hash_sha512(record) if password.empty?
+      password
+    else
+      get_hash_sha1(record)
+    end
+  end
+  
   def create
     freshie = true
     unless @user.empty?
