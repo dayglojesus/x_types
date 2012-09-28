@@ -114,8 +114,8 @@ Puppet::Type.type(:x_computergroup).provide(:x_computergroup) do
       @computergroup['groupmembers'] = map.keys.to_ns
       @computergroup['users'] = map.values.to_ns
     else
-      @computergroup['groupmembers'] = @computergroup['groupmembers'] | map.keys.to_ns
-      @computergroup['users'] = @computergroup['users'] | map.values.to_ns
+      @computergroup['groupmembers'] = @computergroup['groupmembers'] || map.keys.to_ns
+      @computergroup['users'] = @computergroup['users'] || map.values.to_ns
     end
   end
 
