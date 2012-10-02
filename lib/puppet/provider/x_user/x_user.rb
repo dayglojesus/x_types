@@ -77,6 +77,10 @@ Puppet::Type.type(:x_user).provide(:x_user) do
       # info("create: adding #{attrib} attribute, #{resource[attrib]}")
       @user[attrib.to_s] = [ resource[attrib] ]
     end
+    # Generate a UUID if the user does not have one
+    unless @user['generateduid']
+      @user['generateduid'] = [ new_generateduid ]
+    end
     set_password
     set_authentication_authority unless @user['authentication_authority']
     # Write the changes to disk; ALL the changes
@@ -111,6 +115,7 @@ Puppet::Type.type(:x_user).provide(:x_user) do
         return false
       end
       return false unless @user['authentication_authority']
+      return false unless @user['generateduid']
       # Finally, check the password
       return password_match?
     else
@@ -255,12 +260,7 @@ Puppet::Type.type(:x_user).provide(:x_user) do
   
   # Create a shadow has file for the user
   def set_password_legacy
-    if @user['generateduid']
-      guid = @user['generateduid'][0].to_ruby
-    else
-      guid = new_generateduid.to_ruby
-    end
-    @user['generateduid'] = [ guid ]
+    guid = @user['generateduid'][0].to_ruby
     password_hash_file = "#{@@password_hash_dir}/#{guid}"
     begin
       File.open(password_hash_file, 'w') { |f| f.write(resource[:password_sha1])}
