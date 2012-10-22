@@ -1,5 +1,5 @@
 # Provider: dslocal
-# Created: Wed Feb 15 07:49:15 PST 2012
+# Created: Tue Oct 16 13:17:23 PDT 2012
 
 begin
   require 'fileutils'
@@ -10,22 +10,141 @@ rescue LoadError
 end
 
 Puppet::Type.type(:x_node).provide(:dslocal) do
-  desc 'Provides interface for managing Mac OS X Local Directory Service nodes.'
+  desc 'Provides RubyCocoa interface for managing Mac OS X DSLocal nodes.'
 
-  commands  :dsclcmd          => '/usr/bin/dscl'
-  confine   :operatingsystem  => :darwin
-
-  @@dslocal_node  = '/Local/Default'
-  @@bsd_node      = '/BSD/local'
-  @@dslocal_root  = '/private/var/db/dslocal/nodes'
-  @@child_dirs    = ['aliases', 'computer_lists', 'computergroups', 'computers', 'config', 'groups', 'networks', 'users']
-  @@dirmode       = 16832
-  @@filemode      = 33152
-  @@sp_custom     = 'dsAttrTypeStandard:CSPSearchPath'
+  confine :operatingsystem => :darwin
+  
+  @@dslocal_root       = '/private/var/db/dslocal/nodes'
+  @@child_dirs         = ['aliases', 'computer_lists', 'computergroups', 'computers', 'config', 'groups', 'networks', 'users']
+  @@dirmode            = 16832
+  @@filemode           = 33152
+  @@preferences        = '/Library/Preferences/OpenDirectory/Configurations/Search.plist'
+  @@preferences_legacy = '/Library/Preferences/DirectoryService/SearchNodeConfig.plist'
   
   def create
     info("Creating local node: #{resource[:name]}")
-    # Create the node, if it's not already present
+    # Create the dir structure for the local node
+    create_directories
+    # Add or remove the node as required
+    if activate?
+      @configuration.insert_node(@label) unless @configuration.cspsearchpath_has_node?(@label)
+    else
+      @configuration.remove_node(@label) if @configuration.cspsearchpath_has_node?(@label)
+    end    
+    @configuration.set_searchpolicy
+    @configuration.writeToFile_atomically_(@file, true)
+    restart_directoryservices(11)
+  end
+
+  def destroy
+    info("Destroying local node: #{resource[:name]}")
+    FileUtils.rm_rf(@parent) if File.exist?("#{@parent}")
+    @configuration.remove_node(@label) if @configuration.cspsearchpath_has_node?(@label)
+    @configuration.writeToFile_atomically_(@file, true)
+    restart_directoryservices(11)
+  end
+  
+  def exists?
+    info("Checking local node: #{resource[:name]}")
+    @label  = "/Local/#{resource[:name]}"
+    @parent = "#{@@dslocal_root}/#{resource[:name]}"
+    @configuration = load_configuration_file
+    
+    # This logic is really lame, but it's concise.
+    if activate?
+      return false unless @configuration.cspsearchpath_has_node?(@label)
+    else
+      return false if @configuration.cspsearchpath_has_node?(@label)
+    end
+    
+    # Check directory structure
+    return false unless File.exists?(@parent)
+    stat = File::Stat.new(@parent)
+    return false unless stat.mode.eql?(@@dirmode)
+    @@child_dirs.each do |child|
+       return false unless File.exists?("#{@parent}/#{child}")
+       return false unless File::Stat.new("#{@parent}/#{child}").mode.eql?(@@dirmode)
+    end
+    
+    # false unless we using a custom search policy
+    return @configuration.searchpolicy_is_custom?
+  end
+  
+  # Shoehorn methods into the NSMutableDictionary's singleton class
+  # Add some instance vars which get evaluated at runtime (we get setter methods for free this way)
+  def shoehorn(this)
+    
+    class << this
+      
+      attr_accessor :paths_key, :cspsearchpath, :policy_key, :searchpolicy, :custom
+      
+      # Returns the search paths array
+      def cspsearchpath
+        eval @paths_key
+      end
+      
+      # Returns the search policy
+      def searchpolicy
+        eval @policy_key
+      end
+      
+      # Insert the node
+      # after any predefined local nodes, but before any network nodes
+      def insert_node(node)
+        dslocal_node  = '/Local/Default'
+        bsd_node      = '/BSD/local'
+        if index = cspsearchpath.index(bsd_node)
+          cspsearchpath.insert(index + 1, node)
+        elsif index = cspsearchpath.index(dslocal_node)
+          cspsearchpath.insert(index + 1, node)
+        else
+          cspsearchpath.unshift(node)
+        end
+      end
+      
+      # Remove the node from the search path
+      def remove_node(node)
+        cspsearchpath.delete(node)
+      end
+      
+      # Test whtehr or nt the ndoe is in the search path
+      def cspsearchpath_has_node?(node)
+        cspsearchpath.member?(node)
+      end
+      
+      # Has custom ds searching been enabled?
+      def searchpolicy_is_custom?
+        value = searchpolicy.to_ruby
+        value.eql?(@custom)
+      end
+      
+      # Set the search opolicy to custom
+      def set_searchpolicy
+        searchpolicy = @custom
+      end
+      
+    end
+    
+    # Set some instance vars at runtime
+    # Values depend on the struture of the file we've opened
+    this.paths_key  = %q{self['Search Node Custom Path Array']}
+    this.policy_key = %q{self['Search Policy']}
+    this.custom     = 3
+    if this['modules']
+      this.paths_key  = %q{self['modules']['session'][0]['options']['dsAttrTypeStandard:CSPSearchPath']}
+      this.policy_key = %q{self['modules']['session'][0]['options']['dsAttrTypeStandard:SearchPolicy']}
+      this.custom     = 'dsAttrTypeStandard:SearchPolicy'
+    end      
+    this
+    
+  end
+  
+  def activate?
+    return true if resource[:active].eql? :true
+    false
+  end
+    
+  def create_directories
     begin
       FileUtils.mkdir_p("#{@parent}") unless File.exist?("#{@parent}")
       FileUtils.chmod(0700, "#{@parent}")
@@ -38,95 +157,19 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
       p e.message  
       # p e.backtrace.inspect
     end
-    # Activate the node by appending the search path if requested
-    @searchpath.delete(@our_node)
-    if resource[:active].eql?(:true)
-      if index = @searchpath.index(@@bsd_node)
-	      @searchpath.insert(index + 1, @our_node)
-      else
-	      @searchpath.insert(1, @our_node)
-      end
-    end
-    restart_directoryservices(5)
-    return unless set_cspsearchpath(@searchpath)
-    return unless set_searchpolicy(@@sp_custom)
-  end
-
-  def destroy
-    info("Destroying local node: #{resource[:name]}")
-    FileUtils.rm_rf(@parent) if File.exist?("#{@parent}")
-    @searchpath.delete(@our_node)
-    return unless set_cspsearchpath(@searchpath)
-  end
-
-  def exists?
-    info("Checking local node: #{resource[:name]}")
-    @our_node = "/Local/#{resource[:name]}"
-    @parent   = "#{@@dslocal_root}/#{resource[:name]}"
-    return false unless @searchpath = get_cspsearchpath
-    if resource[:active].eql?(:true)
-      return false unless @searchpath.member?(@our_node)
-    else
-      return false if @searchpath.member?(@our_node)
-    end
-    return false unless File.exists?(@parent)
-    stat = File::Stat.new(@parent)
-    return false unless stat.mode.eql?(@@dirmode)
-    @@child_dirs.each do |child|
-       return false unless File.exists?("#{@parent}/#{child}")
-       return false unless File::Stat.new("#{@parent}/#{child}").mode.eql?(@@dirmode)
-    end
-    return cspsearchpath_active?
   end
   
-  # Are we actively using the CSPSearchPath?
-  def cspsearchpath_active?
-    result = `dscl /Search -read / SearchPolicy 2> /dev/null`.chomp.split(": ")[1]
-    result.eql?(@@sp_custom)
-  end
-  
-  # Sets SearchPolicy to Local or Custom
-  def set_searchpolicy(policy)
-    the_cmd = "/usr/bin/dscl /Search -create / SearchPolicy #{policy} 2> /dev/null"
-    system("#{the_cmd}")
-    return $?.success?
-  end
-    
-  # Creates a new CSPSearchPath
-  def set_cspsearchpath(path)
-    path = path.collect { |x| "\"#{x}\"" }.join(" ")
-    the_cmd = "/usr/bin/dscl /Search -create / CSPSearchPath #{path} 2> /dev/null"
-    system("#{the_cmd}")
-    return $?.success?
-  end
-    
-  # Returns CSPSearchPath as NSArray
-  def get_cspsearchpath
-    string = `dscl -plist /Search -read / CSPSearchPath 2> /dev/null`.to_ns
-    return false if string.empty? or string.nil?
-    data = string.dataUsingEncoding(NSUTF8StringEncoding)
-    dict = NSPropertyListSerialization.objc_send(
-      :propertyListFromData, data,
-      :mutabilityOption, NSPropertyListMutableContainersAndLeaves,
-      :format, nil,
-      :errorDescription, nil
-    )
-    return false if dict.nil?
-    dict['dsAttrTypeStandard:CSPSearchPath']
+  def load_configuration_file
+    @file = @@preferences_legacy
+    @file = @@preferences if File.exists?(@@preferences)
+    shoehorn(NSMutableDictionary.dictionaryWithContentsOfFile(@file))
   end
   
   def restart_directoryservices(wait)
-    this_operatingsystem_major_version = Facter.value(:macosx_productversion_major).to_f
-    if this_operatingsystem_major_version <= 10.6
-      system("killall DirectoryService")
-    else
-      system("killall opendirectoryd")
-    end
+    cmd = '/usr/bin/killall DirectoryService'
+    cmd = '/usr/bin/killall opendirectoryd' if File.exists? '/usr/libexec/opendirectoryd'
+    system cmd
     sleep wait
   end
-  
-  def statcheck(target)
-    #not implemented
-  end
-    
+
 end
