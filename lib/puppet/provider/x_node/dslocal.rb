@@ -107,7 +107,7 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
         cspsearchpath.delete(node)
       end
       
-      # Test whtehr or nt the ndoe is in the search path
+      # Test whether or nt the ndoe is in the search path
       def cspsearchpath_has_node?(node)
         cspsearchpath.member?(node)
       end
@@ -133,7 +133,7 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
     if this['modules']
       this.paths_key  = %q{self['modules']['session'][0]['options']['dsAttrTypeStandard:CSPSearchPath']}
       this.policy_key = %q{self['modules']['session'][0]['options']['dsAttrTypeStandard:SearchPolicy']}
-      this.custom     = 'dsAttrTypeStandard:SearchPolicy'
+      this.custom     = 'dsAttrTypeStandard:CSPSearchPath'
     end      
     this
     
