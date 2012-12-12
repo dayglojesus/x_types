@@ -30,7 +30,7 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
       @configuration.insert_node(@label) unless @configuration.cspsearchpath_has_node?(@label)
     else
       @configuration.remove_node(@label) if @configuration.cspsearchpath_has_node?(@label)
-    end    
+    end
     @configuration.set_searchpolicy
     @configuration.writeToFile_atomically_(@file, true)
     restart_directoryservices(11)
@@ -71,28 +71,44 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
   end
   
   # Shoehorn methods into the NSMutableDictionary's singleton class
-  # Add some instance vars which get evaluated at runtime (we get setter methods for free this way)
+  # Add some instance vars which get evaluated at runtime
   def shoehorn(this)
     
     class << this
       
-      attr_accessor :paths_key, :cspsearchpath, :policy_key, :searchpolicy, :custom
-      
-      # Returns the search paths array
-      def cspsearchpath
-        eval @paths_key
-      end
-      
+      attr_accessor :paths_key, :policy_key, :custom
+    
       # Returns the search policy
       def searchpolicy
         eval @policy_key
+      end
+
+      def searchpolicy=(val)
+        if val.is_a?(String)
+          eval @policy_key+"= val"
+        else
+          eval @policy_key+"= #{val}"
+        end
+      end
+
+      # Returns the search path array
+      def cspsearchpath
+        eval @paths_key
+      end
+
+      def cspsearchpath=(array)
+        eval @paths_key+"= array"
       end
       
       # Insert the node
       # after any predefined local nodes, but before any network nodes
       def insert_node(node)
+        # If the array doesn't exist, create it
+        self.cspsearchpath = NSMutableArray.new if cspsearchpath.nil?
+        
         dslocal_node  = '/Local/Default'
         bsd_node      = '/BSD/local'
+        
         if index = cspsearchpath.index(bsd_node)
           cspsearchpath.insert(index + 1, node)
         elsif index = cspsearchpath.index(dslocal_node)
@@ -107,8 +123,9 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
         cspsearchpath.delete(node)
       end
       
-      # Test whether or nt the ndoe is in the search path
+      # Test whether or not the ndoe is in the search path
       def cspsearchpath_has_node?(node)
+        return false if cspsearchpath.nil?
         cspsearchpath.member?(node)
       end
       
@@ -120,7 +137,7 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
       
       # Set the search opolicy to custom
       def set_searchpolicy
-        searchpolicy = @custom
+        self.searchpolicy = @custom
       end
       
     end
@@ -134,7 +151,7 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
       this.paths_key  = %q{self['modules']['session'][0]['options']['dsAttrTypeStandard:CSPSearchPath']}
       this.policy_key = %q{self['modules']['session'][0]['options']['dsAttrTypeStandard:SearchPolicy']}
       this.custom     = 'dsAttrTypeStandard:CSPSearchPath'
-    end      
+    end         
     this
     
   end
@@ -159,9 +176,24 @@ Puppet::Type.type(:x_node).provide(:dslocal) do
     end
   end
   
+  def get_configuration_file
+    file = @@preferences_legacy
+    file = @@preferences if File.exists? '/usr/libexec/opendirectoryd'
+    file
+  end  
+  
+  # If the file we need is still not on disk, we HUP the dir service
+  # Try 3 times, and then fail
   def load_configuration_file
-    @file = @@preferences_legacy
-    @file = @@preferences if File.exists?(@@preferences)
+    3.times do
+      @file = get_configuration_file
+      if File.exists?(@file)
+        break
+      else
+        restart_directoryservices(11)
+      end
+    end
+    raise Puppet::Error, "Cannot read the Search policy file, #{@file}" unless File.exists?(@file)      
     shoehorn(NSMutableDictionary.dictionaryWithContentsOfFile(@file))
   end
   
