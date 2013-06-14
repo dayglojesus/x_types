@@ -78,13 +78,10 @@ Puppet::Type.type(:x_policy).provide(:x_mcx) do
 
   # Returns the authoritative policy as specified in the Puppet resource
   def policy
-    policy = ""
     if resource[:plist]
-      policy = File.readlines(resource[:plist]).to_s
-    else 
-      policy = resource[:content]
-    end
-    policy
+      return File.readlines(resource[:plist]).to_s
+    end 
+    resource[:content]
   end
   
   def policy_cached?
