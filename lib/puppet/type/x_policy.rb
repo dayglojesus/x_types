@@ -40,7 +40,7 @@ Puppet::Type.newtype(:x_policy) do
     end
   end
 
-  newproperty(:content) do
+  newparam(:content) do
     desc "An XML string representation (inc'l newlines) of the MCX Property List"
   end
   
