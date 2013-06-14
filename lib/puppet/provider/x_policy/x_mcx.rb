@@ -85,7 +85,13 @@ Puppet::Type.type(:x_policy).provide(:x_mcx) do
   end
   
   def policy_cached?
-    plist = NSDictionary.dictionaryWithContentsOfFile(resource[:plist])
+    data = @policy.to_ns.objc_send(:dataUsingEncoding, NSUTF8StringEncoding)
+    plist = NSPropertyListSerialization.objc_send(
+      :propertyListFromData, data,
+      :mutabilityOption, NSPropertyListImmutable,
+      :format, nil,
+      :errorDescription, nil
+    )
     policy_files = plist.keys.collect { |policy| "#{@@mcx_cache}/#{policy}.plist" }
     policy_files.each do |file|
       unless File.exists?(file)
