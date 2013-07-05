@@ -37,11 +37,11 @@ Puppet::Type.type(:x_hook).provide(:x_hook) do
   def destroy
     notice("Destroying resource...")
     unload_hook
-    FileUtils.rm(@hook_path)
+    FileUtils.rm(@hook_path) if File.exists?(@hook_path)
     write_preferences(@preferences, @@x_types_prefs)
     if @hooks_list.empty?
       unload_master
-      FileUtils.rm(@master_path)
+      FileUtils.rm(@master_path) if File.exists?(@master_path)
       write_preferences(@master_preferences, @@loginwindow_prefs)
     else
       info("Cannot unload master hook while other hooks remain defined.")
