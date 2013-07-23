@@ -134,7 +134,7 @@ Puppet::Type.type(:x_user).provide(:x_user) do
   
   # Returns a bool
   def password_match?
-    if @kernel_version_major == 12
+    if @kernel_version_major >= 12
       get_hash_sha512_pbkdf2(@user).eql?(resource[:password_sha512_pbkdf2])
     elsif @kernel_version_major == 11
       get_hash_sha512(@user).eql?(resource[:password_sha512])
@@ -227,7 +227,7 @@ Puppet::Type.type(:x_user).provide(:x_user) do
   # Set the password
   def set_password
     begin
-      if @kernel_version_major == 12
+      if @kernel_version_major >= 12
         set_password_mtnlion(resource[:password_sha512_pbkdf2])
       elsif @kernel_version_major == 11
         set_password_lion(resource[:password_sha512])
