@@ -223,7 +223,15 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
     end
     false
   end
-  
+
+  # Need to remove this file before binding on 10.6, otherwise it will fail
+  def remove_existing_kerberos_plist
+    if @kernel_version_major == 10
+      krb_plist = '/Library/Preferences/edu.mit.Kerberos'
+      `rm -rf #{krb_plist}`
+    end
+  end  
+ 
   # Does both Contacts and Search node config files
   def check_legacy_nodeconfig(config)
     if config.include?('Search Node Custom Path Array')
@@ -297,6 +305,7 @@ Puppet::Type.type(:x_node).provide(:activedirectory) do
   
   def bind
     notice("Binding to domain...")
+    remove_existing_kerberos_plist
     if @kernel_version_major < 11
       system('defaults write /Library/Preferences/DirectoryService/DirectoryService "Active Directory" "Active"')
       return unless $?.success?
