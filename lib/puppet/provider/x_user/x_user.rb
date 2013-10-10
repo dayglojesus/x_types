@@ -272,8 +272,8 @@ Puppet::Type.type(:x_user).provide(:x_user) do
   # Set the authentication authority
   def set_authentication_authority
     value = ';ShadowHash;HASHLIST:'
-    authority = NSMutableArray.new      
-    if @kernel_version_major == 12
+    authority = NSMutableArray.new
+    if @kernel_version_major >= 12
       value << '<SALTED-SHA512-PBKDF2>'
     elsif @kernel_version_major == 11
       value << '<SALTED-SHA512>'
